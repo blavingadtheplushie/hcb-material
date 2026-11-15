@@ -1,0 +1,38 @@
+package ink.blavingad.hcb
+
+import android.app.Application
+import android.content.Context
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import ink.blavingad.hcb.data.Api
+import ink.blavingad.hcb.data.Auth
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
+
+class HcbApp : Application(), SingletonImageLoader.Factory {
+    lateinit var container: Container
+    override fun onCreate() { super.onCreate(); container = Container(this) }
+    override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
+        .components { add(OkHttpNetworkFetcherFactory(callFactory = { container.http })) }
+        .build()
+}
+
+class Container(context: Context) {
+    val json = Json { ignoreUnknownKeys = true; explicitNulls = false; coerceInputValues = true; isLenient = true }
+    val http: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS)
+        .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().header("User-Agent", "HCBMaterial/${BuildConfig.VERSION_NAME} (Android)").build()) }
+        .build()
+    val auth = Auth(context, http, json)
+    val api = Api(http, auth, json)
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    val prefs = Prefs(context)
+}
+
+val Context.container: Container get() = (applicationContext as HcbApp).container
