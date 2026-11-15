@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ink.blavingad.hcb.container
 import ink.blavingad.hcb.ui.Avatar
+import ink.blavingad.hcb.ui.BentoGrid
 import ink.blavingad.hcb.ui.CenterLoading
 import ink.blavingad.hcb.ui.EmptyState
 import ink.blavingad.hcb.ui.ErrorState
@@ -61,9 +62,14 @@ fun HomeScreen() {
     LaunchedEffect(orgs.data) {
         orgs.data?.map { o -> async { balances[o.id] = runCatching { c.api.orgBalance(o.id).balance_cents }.getOrNull() } }?.forEach { it.await() }
     }
+    val cards = rememberLoadable("homeCards") { c.api.myCards() }
+    val recent = rememberLoadable("homeRecent", orgs.data?.map { it.id }) {
+        orgs.data.orEmpty().map { o -> async { runCatching { c.api.orgTransactions(o.id, null, null, null).data.map { it.copy(organization = it.organization ?: o) } }.getOrDefault(emptyList()) } }
+            .flatMap { it.await() }.sortedByDescending { it.date ?: "" }
+    }
     val refreshAll: () -> Unit = {
         scope.launch {
-            listOf(async { user.load() }, async { orgs.load() }, async { invites.load() },
+            listOf(async { user.load() }, async { orgs.load() }, async { invites.load() }, async { cards.load() }, async { recent.load() },
                 async { missing = runCatching { c.api.missingReceiptCount() }.getOrDefault(missing) }).forEach { it.await() }
         }
     }
@@ -86,7 +92,19 @@ fun HomeScreen() {
             orgs.data == null -> CenterLoading(Modifier.padding(pad))
             else -> RefreshBox(orgs.loading || user.loading, refreshAll, Modifier.fillMaxSize().padding(pad)) {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = ListBottom) {
-                    if (missing > 0) item { MissingBanner(missing) { nav.navigate("receipts") } }
+                    item {
+                        val month = java.time.LocalDate.now().toString().take(7)
+                        val list0 = orgs.data!!
+                        BentoGrid(
+                            total = if (list0.all { balances.containsKey(it.id) }) list0.sumOf { balances[it.id] ?: 0L } else null,
+                            orgCount = list0.size, missing = missing,
+                            activeCards = cards.data?.count { it.status == "active" },
+                            spentMonth = recent.data?.filter { (it.date ?: "").startsWith(month) && it.amount_cents < 0 && !it.declined }?.sumOf { -it.amount_cents },
+                            last = recent.data?.firstOrNull(), hide = hide,
+                            onReceipts = { nav.navigate("receipts") }, onCards = { nav.navigate("cards") },
+                            onLast = { recent.data?.firstOrNull()?.let { t -> nav.navigate("tx/${t.organization?.id}/${t.id}") } },
+                        )
+                    }
                     val inv = invites.data.orEmpty()
                     if (inv.isNotEmpty()) {
                         item { SectionHeader("Invitations") }
