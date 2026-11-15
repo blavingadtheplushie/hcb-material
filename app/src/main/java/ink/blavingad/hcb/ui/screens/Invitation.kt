@@ -66,8 +66,8 @@ fun InvitationScreen(id: String) {
                 style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             Spacer(Modifier.height(32.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton({ respond(false) }, Modifier.weight(1f).height(56.dp), enabled = !busy, shapes = ButtonDefaults.shapes()) { Text("Decline") }
-                Button({ respond(true) }, Modifier.weight(1f).height(56.dp), enabled = !busy, shapes = ButtonDefaults.shapes()) { Text("Accept") }
+                OutlinedButton(onClick = { respond(false) }, modifier = Modifier.weight(1f).height(56.dp), enabled = !busy, shapes = ButtonDefaults.shapes()) { Text("Decline") }
+                Button(onClick = { respond(true) }, modifier = Modifier.weight(1f).height(56.dp), enabled = !busy, shapes = ButtonDefaults.shapes()) { Text("Accept") }
             }
         }
     }

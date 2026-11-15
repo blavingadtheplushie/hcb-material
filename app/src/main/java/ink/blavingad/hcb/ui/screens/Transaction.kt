@@ -156,8 +156,8 @@ fun TransactionScreen(org: String, id: String) {
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(upload.camera, Modifier.weight(1f), shapes = ButtonDefaults.shapes()) { Icon(Icons.Outlined.PhotoCamera, null); Text("  Camera") }
-                    FilledTonalButton(upload.file, Modifier.weight(1f), shapes = ButtonDefaults.shapes()) { Icon(Icons.Outlined.AttachFile, null); Text("  File") }
+                    FilledTonalButton(onClick = upload.camera, modifier = Modifier.weight(1f), shapes = ButtonDefaults.shapes()) { Icon(Icons.Outlined.PhotoCamera, null); Text("  Camera") }
+                    FilledTonalButton(onClick = upload.file, modifier = Modifier.weight(1f), shapes = ButtonDefaults.shapes()) { Icon(Icons.Outlined.AttachFile, null); Text("  File") }
                 }
                 if (upload.busy) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { LoadingIndicator() }
                 if (t.missing_receipt) TextButton({ scope.launch {

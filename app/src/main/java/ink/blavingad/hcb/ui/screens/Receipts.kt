@@ -76,8 +76,8 @@ fun ReceiptsScreen() {
                     Text("Snap receipts now, attach them to transactions later on HCB.", style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 32.dp))
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(upload.camera, Modifier.weight(1f), shapes = ButtonDefaults.shapes()) { Icon(Icons.Outlined.PhotoCamera, null); Text("  Camera") }
-                        FilledTonalButton(upload.file, Modifier.weight(1f), shapes = ButtonDefaults.shapes()) { Icon(Icons.Outlined.AttachFile, null); Text("  File") }
+                        FilledTonalButton(onClick = upload.camera, modifier = Modifier.weight(1f), shapes = ButtonDefaults.shapes()) { Icon(Icons.Outlined.PhotoCamera, null); Text("  Camera") }
+                        FilledTonalButton(onClick = upload.file, modifier = Modifier.weight(1f), shapes = ButtonDefaults.shapes()) { Icon(Icons.Outlined.AttachFile, null); Text("  File") }
                     }
                     if (upload.busy) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { LoadingIndicator() }
                     val r = bin.data.orEmpty()
