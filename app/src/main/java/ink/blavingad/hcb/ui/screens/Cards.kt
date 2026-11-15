@@ -146,6 +146,7 @@ fun CardScreen(id: String) {
                     grants.data?.get(k.id)?.let { g -> "Grant" to ((g.balance_cents?.let { money(it) + " left" } ?: "Yes") + (g.purpose?.let { " · $it" } ?: "")) },
                     k.total_spent_cents?.let { "Total spent" to money(it) },
                 )
+                item { ink.blavingad.hcb.ui.CardDetailsSection(k) }
                 item { SectionHeader("Card") }
                 itemsIndexed(info) { i, (a, b) ->
                     SegmentedItem(i, info.size) { ListItem(colors = ListItemDefaults.colors(containerColor = Color.Transparent), overlineContent = { Text(a) }, headlineContent = { Text(b) }) }

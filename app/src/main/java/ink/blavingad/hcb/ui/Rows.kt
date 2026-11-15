@@ -62,7 +62,7 @@ fun TxRow(t: Transaction, index: Int, count: Int, showOrg: Boolean = false, onCl
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             leadingContent = {
                 Box(Modifier.size(40.dp).clip(MaterialShapes.Cookie6Sided.toShape()).background(if (t.amount_cents >= 0) cs.tertiaryContainer else cs.secondaryContainer), contentAlignment = Alignment.Center) {
-                    Icon(t.icon(), null, Modifier.size(20.dp), tint = if (t.amount_cents >= 0) cs.onTertiaryContainer else cs.onSecondaryContainer)
+                    MerchantIcon(t, t.icon(), if (t.amount_cents >= 0) cs.onTertiaryContainer else cs.onSecondaryContainer, 20.dp)
                 }
             },
             headlineContent = { Text(t.title(), maxLines = 1, overflow = TextOverflow.Ellipsis) },

@@ -6,7 +6,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,10 +16,12 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ink.blavingad.hcb.ui.AppRoot
+import ink.blavingad.hcb.ui.LockScreen
+import ink.blavingad.hcb.ui.ReceiptShortcut
 import ink.blavingad.hcb.ui.theme.HcbTheme
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private lateinit var authLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,8 +39,21 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
         setContent {
             val mode by container.prefs.theme.collectAsStateWithLifecycle()
-            HcbTheme(mode) { AppRoot(onSignIn = ::startSignIn) }
+            val lockOn by container.prefs.lock.collectAsStateWithLifecycle()
+            val unlocked by container.unlocked.collectAsStateWithLifecycle()
+            HcbTheme(mode) {
+                if (lockOn && !unlocked && container.auth.tokens.value != null) LockScreen { container.unlocked.value = true }
+                else AppRoot(onSignIn = ::startSignIn)
+            }
         }
+    }
+
+    private var stoppedAt = 0L
+    override fun onStop() { super.onStop(); stoppedAt = System.currentTimeMillis() }
+    override fun onStart() {
+        super.onStart()
+        // relock after 30 s in the background (not when coming back from the camera / sign-in)
+        if (stoppedAt != 0L && System.currentTimeMillis() - stoppedAt > 30_000) container.unlocked.value = false
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -48,6 +63,10 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val data = intent?.data
+        intent?.getStringExtra("receipt_tx")?.let { tx ->
+            container.receiptShortcut.value = ReceiptShortcut(intent.getStringExtra("receipt_org") ?: "", tx, intent.getStringExtra("receipt_mode") ?: "camera")
+            intent.removeExtra("receipt_tx")
+        }
         if (container.auth.isCallback(data)) { completeSignIn(data!!); intent.data = null }
     }
 

@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,7 +85,7 @@ import ink.blavingad.hcb.ui.title
 import kotlinx.coroutines.launch
 
 @Composable
-fun TransactionScreen(org: String, id: String) {
+fun TransactionScreen(org: String, id: String, mode: String? = null) {
     val ctx = LocalContext.current
     val c = ctx.container
     val nav = LocalNav.current
@@ -99,6 +100,10 @@ fun TransactionScreen(org: String, id: String) {
     var busy by remember { mutableStateOf(false) }
 
     val upload = rememberReceiptUploader(id) { scope.launch { receipts.load(); tx.load() } }
+    var autoDone by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(mode) {
+        if (!autoDone) { autoDone = true; when (mode) { "camera" -> upload.camera(); "file" -> upload.file() } }
+    }
 
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val t = tx.data

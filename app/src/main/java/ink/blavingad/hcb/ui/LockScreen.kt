@@ -1,0 +1,45 @@
+package ink.blavingad.hcb.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+
+@Composable
+fun LockScreen(onUnlocked: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val tryUnlock: () -> Unit = { scope.launch { if (ctx.authenticate("Unlock HCB")) onUnlocked() } }
+    LaunchedEffect(Unit) { tryUnlock() }
+    val cs = MaterialTheme.colorScheme
+    Box(Modifier.fillMaxSize().background(cs.surface), contentAlignment = Alignment.Center) {
+        BgShape(MaterialShapes.Cookie12Sided, cs.primary.copy(alpha = .08f), Modifier.size(420.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Box(Modifier.size(96.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primaryContainer), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Fingerprint, null, Modifier.size(48.dp), tint = cs.onPrimaryContainer)
+            }
+            Text("HCB is locked", style = MaterialTheme.typography.headlineSmallEmphasized)
+            Button(tryUnlock, shapes = ButtonDefaults.shapes()) { Text("Unlock") }
+        }
+    }
+}

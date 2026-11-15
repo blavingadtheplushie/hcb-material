@@ -20,6 +20,9 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Notifications
+import ink.blavingad.hcb.ui.authenticate
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -88,6 +91,22 @@ fun SettingsScreen() {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.VisibilityOff, null) },
                         headlineContent = { Text("Hide balances") }, supportingContent = { Text("For screenshots and nosy friends") },
                         trailingContent = { Switch(hide, { c.prefs.setHide(it) }) })
+                }
+            }
+            item { SectionHeader("Security & notifications") }
+            item {
+                val lock by c.prefs.lock.collectAsStateWithLifecycle()
+                val notify by c.prefs.notify.collectAsStateWithLifecycle()
+                val toggleLock: (Boolean) -> Unit = { v -> scope.launch { if (ctx.authenticate(if (v) "Turn on app lock" else "Turn off app lock")) { c.prefs.setLock(v); c.unlocked.value = true } } }
+                SegmentedItem(0, 2, { toggleLock(!lock) }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Fingerprint, null) },
+                        headlineContent = { Text("App lock") }, supportingContent = { Text("Fingerprint, face or screen lock to open the app") },
+                        trailingContent = { Switch(lock, toggleLock) })
+                }
+                SegmentedItem(1, 2, { c.prefs.setNotify(!notify) }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Notifications, null) },
+                        headlineContent = { Text("Transaction notifications") }, supportingContent = { Text("Checked every 15 min · tap to add a receipt") },
+                        trailingContent = { Switch(notify, { c.prefs.setNotify(it) }) })
                 }
             }
             item { SectionHeader("Account") }

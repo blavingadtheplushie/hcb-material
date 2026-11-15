@@ -54,6 +54,8 @@ import ink.blavingad.hcb.ui.screens.SettingsScreen
 import ink.blavingad.hcb.ui.screens.TransactionScreen
 import kotlinx.coroutines.launch
 
+data class ReceiptShortcut(val org: String, val tx: String, val mode: String)
+
 val LocalNav = staticCompositionLocalOf<NavHostController> { error("no nav") }
 val LocalSnack = staticCompositionLocalOf<(String) -> Unit> { {} }
 
@@ -77,6 +79,15 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val showBar = Tab.entries.any { it.route == route }
+
+    val shortcut by c.receiptShortcut.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(shortcut) {
+        shortcut?.let { sc -> if (sc.org.isNotEmpty()) nav.navigate("tx/${sc.org}/${sc.tx}?mode=${sc.mode}"); c.receiptShortcut.value = null }
+    }
+    val notifPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= 33) notifPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
 
     CompositionLocalProvider(LocalNav provides nav, LocalSnack provides { m: String -> scope.launch { snack.showSnackbar(m) }; Unit }) {
         Scaffold(
@@ -113,7 +124,9 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
                 composable("receipts", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { UnderlayFrame { ReceiptsScreen() } }
                 composable("settings", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { UnderlayFrame { SettingsScreen() } }
                 composable("org/{id}") { CardFrame { OrgScreen(it.arguments?.getString("id")!!) } }
-                composable("tx/{org}/{id}") { CardFrame { TransactionScreen(it.arguments?.getString("org")!!, it.arguments?.getString("id")!!) } }
+                composable("tx/{org}/{id}?mode={mode}", arguments = listOf(androidx.navigation.navArgument("mode") { nullable = true; defaultValue = null })) {
+                    CardFrame { TransactionScreen(it.arguments?.getString("org")!!, it.arguments?.getString("id")!!, it.arguments?.getString("mode")) }
+                }
                 composable("card/{id}") { CardFrame { CardScreen(it.arguments?.getString("id")!!) } }
                 composable("invite/{id}") { CardFrame { InvitationScreen(it.arguments?.getString("id")!!) } }
             }
