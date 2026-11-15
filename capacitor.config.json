@@ -1,0 +1,7 @@
+{
+  "appId": "ink.blavingad.hcbmaterial",
+  "appName": "HCB Material",
+  "webDir": "dist",
+  "server": { "androidScheme": "https" },
+  "plugins": { "SplashScreen": { "launchShowDuration": 0 } }
+}
