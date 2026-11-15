@@ -8,7 +8,7 @@ export const statusColor = (s: string) => (s === "active" ? "success" : s === "f
 export default function CardRow({ card, showUser }: { card: Card; showUser?: boolean }) {
   const nav = useNavigate();
   return (
-    <ListItemButton onClick={() => nav(`/cards/${card.id}`)} sx={{ borderRadius: 3, mx: 1, opacity: card.status === "canceled" ? 0.5 : 1 }}>
+    <ListItemButton onClick={() => nav(`/cards/${card.id}`)} sx={{ borderRadius: "12px", mx: 1, opacity: card.status === "canceled" ? 0.5 : 1 }}>
       <ListItemAvatar><Avatar sx={{ bgcolor: card.type === "physical" ? "#1f1f24" : "primary.main", color: "#fff" }}><CardIcon /></Avatar></ListItemAvatar>
       <ListItemText
         primary={<Typography fontWeight={500} noWrap>{card.name || (card.type === "physical" ? "Physical card" : "Virtual card")}{card.last4 ? ` ·•• ${card.last4}` : ""}</Typography>}

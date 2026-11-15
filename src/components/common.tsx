@@ -19,7 +19,7 @@ export function TopBar({ title, back, actions, large }: { title: ReactNode; back
 
 export function OrgAvatar({ org, size = 44 }: { org?: Organization; size?: number }) {
   return (
-    <Avatar src={org?.icon || undefined} variant="rounded" sx={{ width: size, height: size, bgcolor: "primary.main", fontWeight: 700, borderRadius: 3 }}>
+    <Avatar src={org?.icon || undefined} variant="rounded" sx={{ width: size, height: size, bgcolor: "primary.main", fontWeight: 700, borderRadius: "12px" }}>
       {org?.name?.[0]?.toUpperCase()}
     </Avatar>
   );

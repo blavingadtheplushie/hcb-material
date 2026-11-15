@@ -41,7 +41,7 @@ export default function OrgPage() {
       } />
       {org.error && <ErrorBox error={org.error} retry={org.reload} />}
       <Box sx={{ px: 2 }}>
-        <Card sx={{ background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, #FF8C37)`, color: "#fff", borderRadius: 5 }}>
+        <Card sx={{ background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, #FF8C37)`, color: "#fff", borderRadius: "28px" }}>
           <CardContent sx={{ p: 3 }}>
             <Stack direction="row" spacing={2} alignItems="center">
               <OrgAvatar org={o} size={52} />

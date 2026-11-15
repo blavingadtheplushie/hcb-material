@@ -34,7 +34,7 @@ export default function Settings() {
             <ToggleButton value="dark">Dark</ToggleButton>
           </ToggleButtonGroup>
         </Box>
-        <List sx={{ bgcolor: "background.paper", borderRadius: 4, border: 1, borderColor: "divider" }}>
+        <List sx={{ bgcolor: "background.paper", borderRadius: "20px", border: 1, borderColor: "divider" }}>
           <ListItemButton onClick={() => Browser.open({ url: "https://hcb.hackclub.com/my/settings" })}><ListItemIcon><OpenIcon /></ListItemIcon><ListItemText primary="Account settings on HCB" /></ListItemButton>
           <ListItemButton onClick={() => Browser.open({ url: "https://help.hcb.hackclub.com" })}><ListItemIcon><HelpIcon /></ListItemIcon><ListItemText primary="HCB help center" /></ListItemButton>
           <ListItemButton onClick={() => Browser.open({ url: "https://github.com/blavingadtheplushie/hcb-material" })}><ListItemIcon><CodeIcon /></ListItemIcon><ListItemText primary="Source code" secondary="Unofficial client, not affiliated with Hack Club" /></ListItemButton>

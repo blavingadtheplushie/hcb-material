@@ -16,7 +16,7 @@ export function CardVisual({ card }: { card: Card }) {
   const physical = card.type === "physical";
   return (
     <Box sx={{
-      aspectRatio: "1.586", borderRadius: 4, p: 2.5, color: "#fff", position: "relative", overflow: "hidden",
+      aspectRatio: "1.586", borderRadius: "20px", p: 2.5, color: "#fff", position: "relative", overflow: "hidden",
       background: physical ? "linear-gradient(135deg,#2b2b33,#0c0c10)" : "linear-gradient(135deg,#EC3750,#FF8C37)",
       filter: card.status === "frozen" ? "saturate(0.3) brightness(1.1)" : card.status === "canceled" ? "grayscale(1)" : "none",
       display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: 6,

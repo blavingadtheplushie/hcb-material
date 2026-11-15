@@ -21,7 +21,7 @@ export default function TxRow({ tx, onClick, showOrg }: { tx: Transaction; onCli
   const positive = tx.amount_cents > 0;
   const struck = tx.declined || tx.reversed;
   return (
-    <ListItemButton onClick={onClick} sx={{ borderRadius: 3, mx: 1, opacity: struck ? 0.55 : 1 }}>
+    <ListItemButton onClick={onClick} sx={{ borderRadius: "12px", mx: 1, opacity: struck ? 0.55 : 1 }}>
       <ListItemAvatar>
         <Avatar sx={{ bgcolor: positive ? "success.main" : "action.selected", color: positive ? "#fff" : "text.primary" }}>{ICONS[txKind(tx)]}</Avatar>
       </ListItemAvatar>
