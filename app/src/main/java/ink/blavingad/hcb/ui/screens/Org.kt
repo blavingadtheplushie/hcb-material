@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -151,7 +152,7 @@ fun OrgScreen(id: String) {
                         else if (cl.isEmpty()) item { EmptyState(Icons.Outlined.CreditCard, "No cards in this org") }
                         else itemsIndexed(cl, key = { _, k -> k.id }) { _, k ->
                             Surface(onClick = { nav.navigate("card/${k.id}") }, shape = RoundedCornerShape(24.dp), modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                                Column { CardArt(k.copy(organization = k.organization ?: o)); k.user?.name?.let { Text(it, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 8.dp, top = 4.dp)) } }
+                                CardArt(k.copy(organization = k.organization ?: o), showOwner = true)
                             }
                         }
                     }
@@ -178,10 +179,14 @@ fun OrgScreen(id: String) {
 fun BalanceHero(balance: Long?, fees: Long?) {
     val cs = MaterialTheme.colorScheme
     Surface(color = cs.primaryContainer, contentColor = cs.onPrimaryContainer, shape = RoundedCornerShape(32.dp), modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Column(Modifier.padding(24.dp)) {
-            Text("Balance", style = MaterialTheme.typography.labelLarge)
-            Text(if (balance == null) "••••" else money(balance), style = MaterialTheme.typography.displayMediumEmphasized)
-            if (fees != null && fees > 0) Text("${money(fees)} in pending fees", style = MaterialTheme.typography.bodyMedium)
+        Box {
+            ink.blavingad.hcb.ui.BgShape(androidx.compose.material3.MaterialShapes.Cookie12Sided, cs.onPrimaryContainer.copy(alpha = .08f),
+                Modifier.align(Alignment.CenterEnd).offset(x = 60.dp).size(200.dp))
+            Column(Modifier.padding(24.dp)) {
+                Text("Balance", style = MaterialTheme.typography.labelLarge)
+                Text(if (balance == null) "••••" else money(balance), style = MaterialTheme.typography.displayMediumEmphasized)
+                if (fees != null && fees > 0) Text("${money(fees)} in pending fees", style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }

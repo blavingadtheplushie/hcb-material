@@ -80,6 +80,7 @@ class Api(private val http: OkHttpClient, private val auth: Auth, val json: Json
         send("organizations/$org/transactions/$id", "PATCH", Transaction.serializer(), jsonBody(buildJsonObject { put("memo", memo) }))
     suspend fun markNoReceipt(id: String) { raw("transactions/$id/mark_no_receipt", "POST") }
 
+    suspend fun cardGrants() = runCatching { get("user/card_grants", ListSerializer(CardGrant.serializer())) }.getOrDefault(emptyList())
     suspend fun myCards() = get("user/cards?expand=organization", ListSerializer(Card.serializer()))
     suspend fun orgCards(id: String) = get("organizations/$id/cards?expand=user", ListSerializer(Card.serializer()))
     suspend fun card(id: String) = get("cards/$id?expand=organization,user,total_spent_cents", Card.serializer())

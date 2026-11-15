@@ -64,6 +64,7 @@ fun CardsScreen() {
     val nav = LocalNav.current
     val scope = rememberCoroutineScope()
     val cards = rememberLoadable("cards") { c.api.myCards().sortedBy { if (it.status == "active") 0 else if (it.status == "frozen") 1 else 2 } }
+    val grants = rememberLoadable("grants") { c.api.cardGrants().filter { it.card_id != null }.associateBy { it.card_id!! } }
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
@@ -83,7 +84,7 @@ fun CardsScreen() {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = ListBottom) {
                     if (l.isEmpty()) item { EmptyState(Icons.Outlined.CreditCard, "No cards yet", "Cards you own on HCB show up here.") }
                     items(l, key = { it.id }) { k ->
-                        Surface(onClick = { nav.navigate("card/${k.id}") }, shape = RoundedCornerShape(24.dp), modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { CardArt(k) }
+                        Surface(onClick = { nav.navigate("card/${k.id}") }, shape = RoundedCornerShape(24.dp), modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { CardArt(k, grant = grants.data?.get(k.id)) }
                     }
                 }
             }
@@ -98,6 +99,7 @@ fun CardScreen(id: String) {
     val snack = LocalSnack.current
     val scope = rememberCoroutineScope()
     val card = rememberLoadable(id) { c.api.card(id) }
+    val grants = rememberLoadable("grants") { c.api.cardGrants().filter { it.card_id != null }.associateBy { it.card_id!! } }
     val txs = rememberPaged<Transaction>(id, idOf = { it.id }) { after -> c.api.cardTransactions(id, after) }
     var busy by remember { mutableStateOf(false) }
     val list = rememberLazyListState()
@@ -118,7 +120,7 @@ fun CardScreen(id: String) {
         if (k == null) { if (card.error != null) ErrorState(card.error!!, { scope.launch { card.load() } }, Modifier.padding(pad)) else CenterLoading(Modifier.padding(pad)); return@Scaffold }
         RefreshBox(card.loading || (txs.loading && txs.items != null), { scope.launch { card.load(); txs.refresh() } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
-                item { CardArt(k, Modifier.padding(16.dp)) }
+                item { CardArt(k, Modifier.padding(16.dp), grant = grants.data?.get(k.id), showOwner = true) }
                 item {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         val frozen = k.status == "frozen"
@@ -141,6 +143,7 @@ fun CardScreen(id: String) {
                     k.organization?.name?.let { "Organization" to it },
                     k.user?.name?.let { "Cardholder" to it },
                     "Type" to k.type.replaceFirstChar { it.uppercase() },
+                    grants.data?.get(k.id)?.let { g -> "Grant" to ((g.balance_cents?.let { money(it) + " left" } ?: "Yes") + (g.purpose?.let { " · $it" } ?: "")) },
                     k.total_spent_cents?.let { "Total spent" to money(it) },
                 )
                 item { SectionHeader("Card") }

@@ -21,6 +21,16 @@ data class Card(
     val id: String = "", val type: String = "virtual", val status: String = "", val name: String? = null,
     val last4: String? = null, val exp_month: Int? = null, val exp_year: Int? = null,
     val organization: Organization? = null, val user: User? = null, val total_spent_cents: Long? = null,
+    val personalization: Personalization? = null,
+)
+
+@Serializable
+data class Personalization(val color: String? = null, val logo_url: String? = null)
+
+@Serializable
+data class CardGrant(
+    val id: String = "", val amount_cents: Long? = null, val balance_cents: Long? = null, val status: String? = null,
+    val card_id: String? = null, val purpose: String? = null, val expires_on: String? = null,
 )
 
 @Serializable

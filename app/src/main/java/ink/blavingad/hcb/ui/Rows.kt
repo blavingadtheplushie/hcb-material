@@ -34,7 +34,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.rotate
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.Contactless
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,32 +91,51 @@ fun TxRow(t: Transaction, index: Int, count: Int, showOrg: Boolean = false, onCl
     }
 }
 
-/** Card art: a gradient in the phone's palette, frozen cards in cool grey. */
+/** Card art: flat tonal colour + a big expressive shape in the background. No gradients. */
 @Composable
-fun CardArt(card: Card, modifier: Modifier = Modifier) {
+fun CardArt(card: Card, modifier: Modifier = Modifier, grant: ink.blavingad.hcb.data.CardGrant? = null, showOwner: Boolean = false) {
     val cs = MaterialTheme.colorScheme
     val frozen = card.status == "frozen"
     val inactive = card.status != "active" && !frozen
-    val brush = when {
-        frozen -> Brush.linearGradient(listOf(cs.surfaceContainerHighest, cs.secondaryContainer))
-        inactive -> Brush.linearGradient(listOf(cs.surfaceContainerHigh, cs.surfaceContainerHighest))
-        card.type == "physical" -> Brush.linearGradient(listOf(cs.primary, cs.tertiary))
-        else -> Brush.linearGradient(listOf(cs.primaryContainer, cs.tertiaryContainer))
-    }
-    val fg = when { frozen || inactive -> cs.onSurfaceVariant; card.type == "physical" -> cs.onPrimary; else -> cs.onPrimaryContainer }
-    Box(modifier.fillMaxWidth().aspectRatio(1.586f).clip(RoundedCornerShape(24.dp)).background(brush).padding(20.dp)) {
-        Column(Modifier.align(Alignment.TopStart)) {
-            Text(card.organization?.name ?: "HCB", color = fg, style = MaterialTheme.typography.titleMediumEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(card.name ?: (card.type.replaceFirstChar { it.uppercase() } + " card"), color = fg.copy(alpha = .8f), style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+    val physical = card.type == "physical"
+    val bg = when { frozen -> cs.surfaceContainerHighest; inactive -> cs.surfaceContainerHigh; physical -> cs.primary; else -> cs.primaryContainer }
+    val fg = when { frozen || inactive -> cs.onSurfaceVariant; physical -> cs.onPrimary; else -> cs.onPrimaryContainer }
+    val shape = when { grant != null -> MaterialShapes.Flower; physical -> MaterialShapes.Cookie9Sided; frozen -> MaterialShapes.SoftBurst; else -> MaterialShapes.Sunny }
+    Box(modifier.fillMaxWidth().aspectRatio(1.586f).clip(RoundedCornerShape(24.dp)).background(bg)) {
+        BgShape(shape, fg.copy(alpha = .09f), Modifier.align(Alignment.CenterEnd).offset(x = 70.dp, y = 30.dp).size(240.dp))
+        Box(Modifier.fillMaxSize().padding(20.dp)) {
+            Column(Modifier.align(Alignment.TopStart).padding(end = 72.dp)) {
+                Text(card.organization?.name ?: "HCB", color = fg, style = MaterialTheme.typography.titleMediumEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                card.name?.takeIf { it.isNotBlank() }?.let { Text(it, color = fg.copy(alpha = .8f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+            Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (frozen) Icon(Icons.Outlined.AcUnit, "Frozen", tint = fg)
+                if (grant != null) Surface(color = cs.tertiaryContainer, contentColor = cs.onTertiaryContainer, shape = RoundedCornerShape(50)) {
+                    Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.CardGiftcard, null, Modifier.size(16.dp))
+                        Text(" Grant" + (grant.balance_cents?.let { " · " + money(it) } ?: ""), style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                if (physical) Icon(Icons.Outlined.Contactless, "Physical card", tint = fg)
+            }
+            if (physical) Box(Modifier.align(Alignment.CenterStart).size(width = 40.dp, height = 30.dp).clip(RoundedCornerShape(6.dp)).background(fg.copy(alpha = .28f)))
+            Column(Modifier.align(Alignment.BottomStart)) {
+                Text("•••• " + (card.last4 ?: "····"), color = fg, style = MaterialTheme.typography.headlineSmallEmphasized, fontFamily = FontFamily.Monospace)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (showOwner) card.user?.name?.let { Text(it.uppercase(), color = fg.copy(alpha = .85f), style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)) }
+                    if (card.exp_month != null && card.exp_year != null)
+                        Text("%02d/%02d".format(card.exp_month, card.exp_year % 100), color = fg.copy(alpha = .8f), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            if (card.status != "active") Text(card.status.replaceFirstChar { it.uppercase() }, color = fg, style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.BottomEnd))
         }
-        if (frozen) Icon(Icons.Outlined.AcUnit, "Frozen", Modifier.align(Alignment.TopEnd), tint = fg)
-        Column(Modifier.align(Alignment.BottomStart)) {
-            Text("•••• " + (card.last4 ?: "····"), color = fg, style = MaterialTheme.typography.headlineSmallEmphasized, fontFamily = FontFamily.Monospace)
-            if (card.exp_month != null && card.exp_year != null)
-                Text("%02d/%02d".format(card.exp_month, card.exp_year % 100), color = fg.copy(alpha = .8f), style = MaterialTheme.typography.labelLarge)
-        }
-        Text(card.status.replaceFirstChar { it.uppercase() }, color = fg, style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.BottomEnd))
     }
+}
+
+/** Big decorative expressive shape for card backgrounds. */
+@Composable
+fun BgShape(shape: androidx.graphics.shapes.RoundedPolygon, color: Color, modifier: Modifier = Modifier) {
+    Box(modifier.rotate(18f).clip(shape.toShape()).background(color))
 }
 
 @Composable
