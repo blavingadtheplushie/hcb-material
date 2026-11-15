@@ -114,6 +114,7 @@ class Auth(context: Context, private val http: OkHttpClient, private val json: J
     suspend fun logout() {
         val t = _tokens.value
         save(null)
+        ink.blavingad.hcb.ui.MemCache.clear()
         if (t != null) withContext(Dispatchers.IO) {
             runCatching {
                 http.newCall(Request.Builder().url("${BuildConfig.API_BASE}/oauth/revoke")

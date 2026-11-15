@@ -53,64 +53,101 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
-/** Simple async state holder: load once, refresh on demand. */
-class Loadable<T>(private val loader: suspend () -> T) {
-    var data by mutableStateOf<T?>(null)
+/** Process-wide cache so screens show what they know instantly and refresh in the background. */
+object MemCache {
+    val map = java.util.concurrent.ConcurrentHashMap<String, Any>()
+    fun clear() = map.clear()
+}
+
+private fun cacheKey(prefix: String, keys: Array<out Any?>) = prefix + ":" + keys.joinToString("|")
+
+/** Async state holder: seeded from cache, refreshed in the background. */
+class Loadable<T>(private val key: String, private val loader: suspend () -> T) {
+    @Suppress("UNCHECKED_CAST")
+    var data by mutableStateOf<T?>(MemCache.map[key] as T?)
     var error by mutableStateOf<String?>(null)
     var loading by mutableStateOf(false)
     suspend fun load() {
         loading = true
-        try { data = loader(); error = null } catch (e: Exception) { error = e.message ?: e.toString() } finally { loading = false }
+        try {
+            val v = loader(); data = v; error = null
+            if (v != null) MemCache.map[key] = v as Any else MemCache.map.remove(key)
+        } catch (e: Exception) { error = e.message ?: e.toString() } finally { loading = false }
     }
 }
 
 @Composable
 fun <T> rememberLoadable(vararg keys: Any?, loader: suspend () -> T): Loadable<T> {
-    val l = remember(*keys) { Loadable(loader) }
+    val l = remember(*keys) { Loadable(cacheKey("L", keys), loader) }
     LaunchedEffect(l) { l.load() }
     return l
 }
 
-/** Cursor-paginated list (limit/after/has_more). */
-class Paged<T>(private val idOf: (T) -> String, private val fetch: suspend (after: String?) -> ink.blavingad.hcb.data.Paginated<T>) {
-    var items by mutableStateOf<List<T>?>(null)
-    var hasMore by mutableStateOf(true)
+private class PagedSnapshot<T>(val items: List<T>, val hasMore: Boolean, val total: Int)
+
+/** Cursor-paginated list (limit/after/has_more), cached; refresh merges new items on top. */
+class Paged<T>(private val key: String, private val idOf: (T) -> String, private val fetch: suspend (after: String?) -> ink.blavingad.hcb.data.Paginated<T>) {
+    @Suppress("UNCHECKED_CAST")
+    private val snap = MemCache.map[key] as PagedSnapshot<T>?
+    var items by mutableStateOf<List<T>?>(snap?.items)
+    var hasMore by mutableStateOf(snap?.hasMore ?: true)
     var loading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
-    var total by mutableStateOf(0)
+    var total by mutableStateOf(snap?.total ?: 0)
     suspend fun refresh() { loadPage(reset = true) }
     suspend fun more() { if (hasMore && !loading) loadPage(reset = false) }
     private suspend fun loadPage(reset: Boolean) {
         loading = true
         try {
-            val after = if (reset) null else items?.lastOrNull()?.let(idOf)
+            val old = items
+            val after = if (reset) null else old?.lastOrNull()?.let(idOf)
             val p = fetch(after)
-            items = if (reset) p.data else (items.orEmpty() + p.data)
-            hasMore = p.has_more; total = p.total_count; error = null
+            items = when {
+                !reset -> old.orEmpty() + p.data
+                old.isNullOrEmpty() || !p.has_more -> p.data
+                else -> {
+                    // keep the deeper pages we already had, drop what the fresh first page replaces
+                    val fresh = p.data.map(idOf).toHashSet()
+                    val oldIds = old.map(idOf)
+                    val overlap = oldIds.indexOfLast { it in fresh }
+                    if (overlap < 0) p.data else p.data + old.drop(overlap + 1).filter { idOf(it) !in fresh }
+                }
+            }
+            if (reset) hasMore = if (old.isNullOrEmpty() || !p.has_more) p.has_more else hasMore || p.has_more else hasMore = p.has_more
+            total = p.total_count; error = null
+            MemCache.map[key] = PagedSnapshot(items!!, hasMore, total)
         } catch (e: Exception) { error = e.message ?: e.toString() } finally { loading = false }
     }
 }
 
 @Composable
 fun <T> rememberPaged(vararg keys: Any?, idOf: (T) -> String, fetch: suspend (String?) -> ink.blavingad.hcb.data.Paginated<T>): Paged<T> {
-    val p = remember(*keys) { Paged(idOf, fetch) }
+    val p = remember(*keys) { Paged(cacheKey("P", keys), idOf, fetch) }
     LaunchedEffect(p) { p.refresh() }
     return p
 }
 
-/** Expressive pull-to-refresh with the morphing LoadingIndicator and haptic ticks (BetterAttend style). */
 @Composable
 fun RefreshBox(refreshing: Boolean, onRefresh: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val state = rememberPullToRefreshState()
     val haptic = LocalHapticFeedback.current
+    // Background refreshes stay silent: the indicator only shows for a refresh the user pulled.
+    var pulled by remember { mutableStateOf(false) }
+    var sawWork by remember { mutableStateOf(false) }
+    LaunchedEffect(refreshing, pulled) {
+        if (pulled && refreshing) sawWork = true
+        if (pulled && !refreshing && sawWork) { pulled = false; sawWork = false }
+        if (pulled && !refreshing && !sawWork) { kotlinx.coroutines.delay(1500); if (!sawWork) pulled = false }
+    }
     LaunchedEffect(state) {
         snapshotFlow { state.distanceFraction >= 1f }.distinctUntilChanged().drop(1).collect { armed ->
             haptic.performHapticFeedback(if (armed) HapticFeedbackType.GestureThresholdActivate else HapticFeedbackType.SegmentFrequentTick)
         }
     }
+    val showing = pulled
     PullToRefreshBox(
-        isRefreshing = refreshing, onRefresh = onRefresh, state = state, modifier = modifier,
-        indicator = { PullToRefreshDefaults.LoadingIndicator(state = state, isRefreshing = refreshing, modifier = Modifier.align(Alignment.TopCenter)) },
+        isRefreshing = showing, onRefresh = { pulled = true; sawWork = false; onRefresh() }, state = state, modifier = modifier,
+        indicator = { PullToRefreshDefaults.LoadingIndicator(state = state, isRefreshing = showing, modifier = Modifier.align(Alignment.TopCenter)) },
     ) { content() }
 }
 

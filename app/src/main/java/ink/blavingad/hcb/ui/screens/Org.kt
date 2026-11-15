@@ -197,8 +197,8 @@ fun androidx.compose.foundation.lazy.LazyListScope.txList(txs: Paged<Transaction
     if (items.isEmpty()) { item { EmptyState(Icons.Outlined.SearchOff, "Nothing here", "No transactions match.") }; return }
     val groups = items.groupBy { if (it.pending) null else parseDate(it.date) }
     groups.forEach { (day, list) ->
-        item(key = "h$day") { SectionHeader(dayHeader(day)) }
-        itemsIndexed(list, key = { _, t -> t.id }) { i, t -> TxRow(t, i, list.size, showOrg) { onOpen(t) } }
+        item(key = "h$day") { SectionHeader(dayHeader(day), Modifier.animateItem()) }
+        itemsIndexed(list, key = { _, t -> t.id }) { i, t -> Box(Modifier.animateItem()) { TxRow(t, i, list.size, showOrg) { onOpen(t) } } }
     }
     if (txs.hasMore) item(key = "more") { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { LoadingIndicator(Modifier.size(40.dp)) } }
 }
