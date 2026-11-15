@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.outlined.Contactless
 import coil3.compose.SubcomposeAsyncImage
 import ink.blavingad.hcb.data.Transaction
 
