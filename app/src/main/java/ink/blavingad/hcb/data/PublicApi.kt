@@ -59,7 +59,9 @@ class PublicApi(private val http: OkHttpClient, private val json: Json) {
     suspend fun resolveShort(url: String): String? = withContext(Dispatchers.IO) {
         runCatching {
             http.newBuilder().followRedirects(false).followSslRedirects(false).build()
-                .newCall(Request.Builder().url(url).head().build()).execute().use { it.header("Location") }
+                .newCall(Request.Builder().url(url).get().build()).execute().use { r ->
+                    r.header("Location")?.let { loc -> r.request.url.resolve(loc)?.toString() }
+                }
         }.getOrNull()
     }
 }

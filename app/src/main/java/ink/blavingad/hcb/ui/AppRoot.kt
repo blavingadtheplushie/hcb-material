@@ -86,10 +86,15 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
     }
     val link by c.deepLink.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
-    androidx.compose.runtime.LaunchedEffect(link) {
-        val l = link ?: return@LaunchedEffect
-        c.deepLink.value = null
-        if (!c.openLink(l, nav)) ctx.openUrl(l)
+    // collect sequentially: nulling the flow inside a LaunchedEffect(link) cancelled the network lookup,
+    // which then fell back to openUrl -> android sent the link straight back to us (loop).
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        c.deepLink.collect { l ->
+            if (l == null) return@collect
+            val ok = try { c.openLink(l, nav) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { false }
+            c.deepLink.value = null
+            if (!ok) ctx.openUrlInBrowser(l)
+        }
     }
     val notifPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
     androidx.compose.runtime.LaunchedEffect(Unit) {
