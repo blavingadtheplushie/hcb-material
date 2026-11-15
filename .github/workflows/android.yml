@@ -25,7 +25,16 @@ jobs:
         with:
           packages: "platforms;android-37.0 build-tools;37.0.0"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Decode keystore
+        env:
+          KS: ${{ secrets.HCB_KEYSTORE_B64 }}
+        run: echo "$KS" | base64 -d > release.jks
       - name: Assemble release APK
+        env:
+          HCB_KEYSTORE_FILE: release.jks
+          HCB_KEYSTORE_PASSWORD: ${{ secrets.HCB_KEYSTORE_PASSWORD }}
+          HCB_KEY_ALIAS: ${{ secrets.HCB_KEY_ALIAS }}
+          HCB_KEY_PASSWORD: ${{ secrets.HCB_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease -PversionCode=${{ github.run_number }} -PversionName=0.1.${{ github.run_number }} --console=plain
       - name: Rename APKs
         run: |
