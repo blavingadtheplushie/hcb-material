@@ -43,5 +43,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=build-${{ github.run_number }}
+          TAG=v0.1.${{ github.run_number }}
           gh release create "$TAG" out/*.apk --title "HCB Material 0.1.${{ github.run_number }}" --notes "Automatic build from ${{ github.sha }}" --latest
