@@ -1,0 +1,46 @@
+name: Smoke test
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Android]
+    types: [completed]
+
+jobs:
+  emulator:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Download latest APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download -R ${{ github.repository }} --pattern 'hcb-material-x86_64.apk'
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install -r hcb-material-x86_64.apk
+            adb logcat -c
+            adb shell am start -W -n ink.blavingad.hcb/.MainActivity
+            sleep 8
+            adb exec-out screencap -p > launch.png
+            adb shell am start -W -a android.intent.action.VIEW -d 'hcb://?code=fake&state=x' ink.blavingad.hcb
+            sleep 6
+            adb exec-out screencap -p > callback.png
+            adb logcat -d > logcat.txt
+            adb shell pidof ink.blavingad.hcb || (echo "APP NOT RUNNING" && exit 1)
+            ! grep -E "FATAL EXCEPTION|AndroidRuntime: (Process|java)" logcat.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke
+          path: |
+            *.png
+            logcat.txt
