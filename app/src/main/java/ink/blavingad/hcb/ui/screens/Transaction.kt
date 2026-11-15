@@ -94,6 +94,8 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
     val tx = rememberLoadable(org, id) { c.api.transaction(org, id) }
     val receipts = rememberLoadable("r", id) { c.api.receipts(id) }
     val comments = rememberLoadable("c", id) { c.api.comments(id) }
+    var viewing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<ink.blavingad.hcb.data.Receipt?>(null) }
+    viewing?.let { ink.blavingad.hcb.ui.ReceiptViewer(it) { viewing = null } }
     var menu by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<String?>(null) }
     var comment by remember { mutableStateOf("") }
@@ -153,7 +155,7 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
                 else if (list.isNotEmpty()) LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(list, key = { it.id }) { r ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Surface(onClick = { r.url?.let(ctx::openUrl) }, shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.size(120.dp, 150.dp)) {
+                            Surface(onClick = { viewing = r }, shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.size(120.dp, 150.dp)) {
                                 AsyncImage(r.preview_url ?: r.url, r.filename, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)))
                             }
                             IconButton({ scope.launch {

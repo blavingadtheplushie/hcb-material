@@ -61,6 +61,8 @@ fun ReceiptsScreen() {
     val upload = rememberReceiptUploader(null) { scope.launch { bin.load() } }
     val list = rememberLazyListState()
     val snack = ink.blavingad.hcb.ui.LocalSnack.current
+    var viewing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<ink.blavingad.hcb.data.Receipt?>(null) }
+    viewing?.let { ink.blavingad.hcb.ui.ReceiptViewer(it) { viewing = null } }
     var deleting by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<ink.blavingad.hcb.data.Receipt?>(null) }
     deleting?.let { r ->
         androidx.compose.material3.AlertDialog(
@@ -106,7 +108,7 @@ fun ReceiptsScreen() {
                     if (r.isNotEmpty()) LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(r, key = { it.id }) { x ->
                             Column(Modifier.size(110.dp, 170.dp).animateItem()) {
-                                Surface(onClick = { x.url?.let(ctx::openUrl) }, shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.size(110.dp, 136.dp)) {
+                                Surface(onClick = { viewing = x }, shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.size(110.dp, 136.dp)) {
                                     AsyncImage(x.preview_url ?: x.url, x.filename, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)))
                                 }
                                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
