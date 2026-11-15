@@ -71,7 +71,7 @@ class TxWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, pa
             channel(ctx)
             val base = t.id.hashCode() and 0x0fffffff
             val n = NotificationCompat.Builder(ctx, CHANNEL)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_notif)
                 .setContentTitle("${money(t.amount_cents, signed = true)} · ${t.title()}")
                 .setContentText(t.organization?.name ?: "New transaction")
                 .setAutoCancel(true)

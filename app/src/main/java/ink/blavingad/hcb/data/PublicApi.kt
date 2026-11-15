@@ -10,7 +10,10 @@ import okhttp3.Request
 
 /** HCB's public v3 API: works without auth for transparent organizations (v4 only serves members). */
 @Serializable data class V3Balances(val balance_cents: Long? = null, val fee_balance_cents: Long? = null, val incoming_balance_cents: Long? = null)
-@Serializable data class V3User(val id: String = "", val full_name: String? = null, val photo: String? = null)
+@Serializable data class V3User(val id: String = "", val full_name: String? = null, val photo: String? = null, val admin: Boolean = false, val auditor: Boolean = false)
+@Serializable data class V3Card(val id: String = "", val name: String? = null, val type: String = "virtual", val status: String = "", val issued_at: String? = null, val owner: V3User? = null) {
+    fun toCard(org: Organization?) = Card(id = id, type = type, status = status, name = name, organization = org, user = owner?.let { User(id = it.id, name = it.full_name ?: "", avatar = it.photo) })
+}
 @Serializable data class V3Org(
     val id: String = "", val name: String = "", val slug: String = "", val website: String? = null, val transparent: Boolean = false,
     val logo: String? = null, val background_image: String? = null, val public_message: String? = null, val donation_link: String? = null,
@@ -53,6 +56,17 @@ class PublicApi(private val http: OkHttpClient, private val json: Json) {
         return Paginated(has_more = list.size >= per, data = list.mapIndexed { i, t ->
             t.toTransaction().let { if (i == list.lastIndex) it.copy(code = "#p${page + 1}") else it }
         })
+    }
+
+    /** all cards of a transparent org (active first), capped so giant orgs stay snappy. */
+    suspend fun cards(slug: String, org: Organization?, per: Int = 100, maxPages: Int = 5): List<Card> {
+        val all = mutableListOf<V3Card>()
+        for (page in 1..maxPages) {
+            val list = json.decodeFromString(ListSerializer(V3Card.serializer()), get("organizations/$slug/cards?per_page=$per&page=$page"))
+            all += list; if (list.size < per) break
+        }
+        val rank = mapOf("active" to 0, "frozen" to 1)
+        return all.sortedBy { rank[it.status] ?: 2 }.map { it.toCard(org) }
     }
 
     /** hcb.gg short links: read the redirect target without following it. */

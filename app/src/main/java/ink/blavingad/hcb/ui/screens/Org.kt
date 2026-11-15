@@ -101,6 +101,8 @@ fun OrgScreen(id: String) {
     var filter by rememberSaveable { mutableStateOf("") }
     val txs = rememberPaged<Transaction>(id, search, filter, idOf = { it.id }) { after -> c.api.orgTransactions(id, after, search, filter) }
     val cards = rememberLoadable(id, tab == 1) { if (tab == 1) c.api.orgCards(id) else null }
+    // v4 has no description: borrow the public message from v3 when the org is transparent
+    val desc = rememberLoadable("desc", id, org.data?.transparent == true) { org.data?.takeIf { it.transparent == true }?.let { runCatching { c.public.org(it.slug).public_message }.getOrNull() } }
     val list = rememberLazyListState()
     InfiniteLoader(list, txs)
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -140,6 +142,9 @@ fun OrgScreen(id: String) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
                 item {
                     BalanceHero(if (hide) null else o.balance_cents, o.fee_balance_cents)
+                    desc.data?.takeIf { it.isNotBlank() }?.let { msg ->
+                        ink.blavingad.hcb.ui.Markdown(msg, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { url -> if (ink.blavingad.hcb.ui.isHcbLink(android.net.Uri.parse(url))) c.deepLink.value = url else ctx.openUrl(url) }
+                    }
                 }
                 item {
                     val labels = listOf("Activity", "Cards", "Team")
