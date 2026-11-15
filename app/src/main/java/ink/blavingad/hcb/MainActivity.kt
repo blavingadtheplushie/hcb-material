@@ -99,7 +99,7 @@ class MainActivity : FragmentActivity() {
             intent.removeExtra("receipt_tx")
         }
         if (container.auth.isCallback(data)) { completeSignIn(data!!); intent.data = null }
-        else if (ink.blavingad.hcb.ui.isHcbLink(data)) { container.deepLink.value = data.toString(); intent.data = null }
+        else if (ink.blavingad.hcb.ui.isHcbLink(data)) { container.deepLink.value = data.toString(); intent?.data = null }
     }
 
     private fun completeSignIn(uri: Uri) {
