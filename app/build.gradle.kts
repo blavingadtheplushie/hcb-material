@@ -17,6 +17,7 @@ android {
         buildConfigField("String", "API_BASE", "\"https://hcb.hackclub.com/api/v4\"")
         buildConfigField("String", "OAUTH_CLIENT_ID", "\"yt8JHmPDmmYYLUmoEiGtocYwg5fSOGCrcIY3G-vkMRs\"")
         buildConfigField("String", "OAUTH_REDIRECT_URI", "\"hcb://\"")
+        buildConfigField("String", "STRIPE_PK", "\"pk_live_UAjIP1Kss29XZ6tW0MFWkjUQ\"")
     }
 
     // Release signing from env (CI); falls back to the debug key so a local release build still installs.
@@ -84,4 +85,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
     implementation(libs.coil.okhttp)
+    implementation(libs.coil.svg)
+    implementation(libs.work.runtime)
+    implementation(libs.biometric)
+    implementation(libs.fragment)
 }
