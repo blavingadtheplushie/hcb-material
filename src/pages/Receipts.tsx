@@ -62,7 +62,7 @@ export default function Receipts() {
           {!!bin.data?.length && (
             <ImageList cols={2} gap={8}>
               {bin.data.map((r) => (
-                <ImageListItem key={r.id} sx={{ borderRadius: 3, overflow: "hidden", bgcolor: "action.hover", cursor: "pointer" }} onClick={() => Browser.open({ url: r.url })}>
+                <ImageListItem key={r.id} sx={{ borderRadius: "12px", overflow: "hidden", bgcolor: "action.hover", cursor: "pointer" }} onClick={() => Browser.open({ url: r.url })}>
                   {r.preview_url ? <img src={r.preview_url} alt={r.filename} loading="lazy" style={{ height: 180, objectFit: "cover" }} />
                     : <Box sx={{ display: "grid", placeItems: "center", height: 180 }}><FileIcon fontSize="large" /></Box>}
                   <ImageListItemBar title={r.filename} actionIcon={<IconButton sx={{ color: "#fff" }} onClick={(e) => { e.stopPropagation(); del(r); }}><DeleteIcon /></IconButton>} />

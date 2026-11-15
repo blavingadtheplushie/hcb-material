@@ -156,7 +156,7 @@ export default function TransactionPage() {
             {receipts.data && receipts.data.length > 0 && (
               <ImageList cols={2} gap={8} sx={{ m: 0 }}>
                 {receipts.data.map((r) => (
-                  <ImageListItem key={r.id} sx={{ borderRadius: 3, overflow: "hidden", bgcolor: "action.hover", cursor: "pointer", minHeight: 120 }}
+                  <ImageListItem key={r.id} sx={{ borderRadius: "12px", overflow: "hidden", bgcolor: "action.hover", cursor: "pointer", minHeight: 120 }}
                     onClick={() => Browser.open({ url: r.url })}>
                     {r.preview_url ? <img src={r.preview_url} alt={r.filename} loading="lazy" style={{ objectFit: "cover", height: 160 }} />
                       : <Box sx={{ display: "grid", placeItems: "center", height: 160 }}><FileIcon fontSize="large" /></Box>}
