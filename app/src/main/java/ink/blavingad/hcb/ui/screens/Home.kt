@@ -63,10 +63,10 @@ fun HomeScreen() {
         orgs.data?.map { o -> async { balances[o.id] = runCatching { c.api.orgBalance(o.id).balance_cents }.getOrNull() } }?.forEach { it.await() }
     }
     val cards = rememberLoadable("homeCards") { c.api.myCards() }
-    val recent = rememberLoadable("homeRecent", orgs.data?.map { it.id }) {
+    val recent = rememberLoadable("homeRecent", orgs.data?.map { it.id }) { kotlinx.coroutines.coroutineScope {
         orgs.data.orEmpty().map { o -> async { runCatching { c.api.orgTransactions(o.id, null, null, null).data.map { it.copy(organization = it.organization ?: o) } }.getOrDefault(emptyList()) } }
             .flatMap { it.await() }.sortedByDescending { it.date ?: "" }
-    }
+    } }
     val refreshAll: () -> Unit = {
         scope.launch {
             listOf(async { user.load() }, async { orgs.load() }, async { invites.load() }, async { cards.load() }, async { recent.load() },
