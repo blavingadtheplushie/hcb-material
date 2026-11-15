@@ -30,6 +30,17 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="hcb" />
             </intent-filter>
+            <!-- open hcb.hackclub.com / hcb.gg links in the app (enable in "Open by default" on Android 12+) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:scheme="http" />
+                <data android:host="hcb.hackclub.com" />
+                <data android:host="hcb.gg" />
+                <data android:host="www.hcb.gg" />
+            </intent-filter>
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"

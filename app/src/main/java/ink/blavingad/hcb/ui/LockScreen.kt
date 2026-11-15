@@ -38,8 +38,20 @@ fun LockScreen(onUnlocked: () -> Unit) {
             Box(Modifier.size(96.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primaryContainer), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.Fingerprint, null, Modifier.size(48.dp), tint = cs.onPrimaryContainer)
             }
-            Text("HCB is locked", style = MaterialTheme.typography.headlineSmallEmphasized)
+            Text("HCB is locked", style = MaterialTheme.typography.headlineSmallEmphasized, color = cs.onSurface)
             Button(tryUnlock, shapes = ButtonDefaults.shapes()) { Text("Unlock") }
+        }
+    }
+}
+
+/** Shown over the app while it sits in the recents screen (when "Hide in recents" is on). */
+@Composable
+fun PrivacyCover() {
+    val cs = MaterialTheme.colorScheme
+    Box(Modifier.fillMaxSize().background(cs.surface), contentAlignment = Alignment.Center) {
+        BgShape(MaterialShapes.Cookie12Sided, cs.primary.copy(alpha = .08f), Modifier.size(420.dp))
+        Box(Modifier.size(112.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primaryContainer), contentAlignment = Alignment.Center) {
+            Text("HCB", style = MaterialTheme.typography.headlineMediumEmphasized, color = cs.onPrimaryContainer)
         }
     }
 }

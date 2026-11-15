@@ -40,6 +40,11 @@ fun LoginScreen(onSignIn: (Boolean) -> Unit) {
     val busy by auth.busy.collectAsStateWithLifecycle()
     val error by auth.error.collectAsStateWithLifecycle()
     val cs = MaterialTheme.colorScheme
+    val ctx = LocalContext.current
+    // a random expansion of "HCB" from github.com/hackclub/hcb-expansions
+    val phrase = androidx.compose.runtime.remember {
+        runCatching { ctx.assets.open("hcb_phrases.txt").bufferedReader().readLines().map { it.trim() }.filter { it.isNotEmpty() }.random() }.getOrDefault("Hack Club's fiscal sponsorship platform")
+    }
     Surface(color = cs.surface, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.weight(1f))
@@ -48,7 +53,7 @@ fun LoginScreen(onSignIn: (Boolean) -> Unit) {
             }
             Spacer(Modifier.height(32.dp))
             Text("HCB", style = MaterialTheme.typography.displayLargeEmphasized, color = cs.onSurface)
-            Text("Your Hack Club bank, in Material You.", style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant, textAlign = TextAlign.Center)
+            Text(phrase, style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant, textAlign = TextAlign.Center)
             Spacer(Modifier.weight(1f))
             if (error != null) Text(error!!, color = cs.error, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 12.dp))
             Button(onClick = { onSignIn(false) }, enabled = !busy, shapes = ButtonDefaults.shapes(),

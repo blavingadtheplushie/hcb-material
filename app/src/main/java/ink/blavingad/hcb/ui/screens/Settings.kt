@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -154,7 +155,7 @@ fun SettingsScreen() {
                 }
                 SegmentedItem(if (lock) 2 else 1, if (lock) 3 else 2, { c.prefs.setSecure(!secure) }) {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.ScreenLockPortrait, null) },
-                        headlineContent = { Text("Block screenshots") }, supportingContent = { Text("Also hides the app in the recents screen") },
+                        headlineContent = { Text("Block screenshots") }, supportingContent = { Text("Shows a cover instead of the app in recents") },
                         trailingContent = { Switch(secure, { c.prefs.setSecure(it) }) })
                 }
             }
@@ -201,6 +202,19 @@ fun SettingsScreen() {
                         headlineContent = { Text("System notification settings") }, supportingContent = { Text("Sound, vibration, lock screen") })
                 }
             }
+            item { SectionHeader("Links") }
+            item {
+                SegmentedItem(0, 1, {
+                    val i = if (android.os.Build.VERSION.SDK_INT >= 31)
+                        android.content.Intent(android.provider.Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS, android.net.Uri.parse("package:${ctx.packageName}"))
+                    else android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${ctx.packageName}"))
+                    runCatching { ctx.startActivity(i) }
+                }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Link, null) },
+                        headlineContent = { Text("Open HCB links in the app") },
+                        supportingContent = { Text("Turn on hcb.hackclub.com and hcb.gg under \"Open by default\"") })
+                }
+            }
             item { SectionHeader("Storage") }
             item {
                 SegmentedItem(0, 1, {
@@ -229,8 +243,8 @@ fun SettingsScreen() {
             item {
                 SegmentedItem(0, 2, { ctx.openUrl("https://github.com/blavingadtheplushie/hcb-material") }) {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Code, null) },
-                        headlineContent = { Text("HCB Material ${BuildConfig.VERSION_NAME}") },
-                        supportingContent = { Text("Unofficial, GPLv3 · made by a plushie octopus") })
+                        headlineContent = { Text("HCB ${BuildConfig.VERSION_NAME}") },
+                        supportingContent = { Text("Unofficial client · GPLv3") })
                 }
                 SegmentedItem(1, 2, { ctx.openUrl("https://github.com/blavingadtheplushie/hcb-material/issues/new") }) {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.BugReport, null) },

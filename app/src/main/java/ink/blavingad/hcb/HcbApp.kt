@@ -31,6 +31,9 @@ class Container(context: Context) {
         .build()
     val auth = Auth(context, http, json)
     val api = Api(http, auth, json)
+    val public = ink.blavingad.hcb.data.PublicApi(http, json)
+    /** pending https://hcb.hackclub.com/… or https://hcb.gg/… link to open in-app */
+    val deepLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     val prefs = Prefs(context)
     @Volatile var skipRelock = false

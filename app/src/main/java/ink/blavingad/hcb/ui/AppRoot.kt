@@ -84,6 +84,13 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
     androidx.compose.runtime.LaunchedEffect(shortcut) {
         shortcut?.let { sc -> if (sc.org.isNotEmpty()) nav.navigate("tx/${sc.org}/${sc.tx}?mode=${sc.mode}"); c.receiptShortcut.value = null }
     }
+    val link by c.deepLink.collectAsStateWithLifecycle()
+    val ctx = LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(link) {
+        val l = link ?: return@LaunchedEffect
+        c.deepLink.value = null
+        if (!c.openLink(l, nav)) ctx.openUrl(l)
+    }
     val notifPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
     androidx.compose.runtime.LaunchedEffect(Unit) {
         if (android.os.Build.VERSION.SDK_INT >= 33) notifPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -127,6 +134,7 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
                 composable("tx/{org}/{id}?mode={mode}", arguments = listOf(androidx.navigation.navArgument("mode") { nullable = true; defaultValue = null })) {
                     CardFrame { TransactionScreen(it.arguments?.getString("org")!!, it.arguments?.getString("id")!!, it.arguments?.getString("mode")) }
                 }
+                composable("porg/{slug}") { CardFrame { ink.blavingad.hcb.ui.screens.PublicOrgScreen(it.arguments?.getString("slug")!!) } }
                 composable("card/{id}") { CardFrame { CardScreen(it.arguments?.getString("id")!!) } }
                 composable("invite/{id}") { CardFrame { InvitationScreen(it.arguments?.getString("id")!!) } }
             }

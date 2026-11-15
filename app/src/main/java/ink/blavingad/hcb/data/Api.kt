@@ -75,6 +75,7 @@ class Api(private val http: OkHttpClient, private val auth: Auth, val json: Json
     }
     suspend fun missingReceipts(after: String?) = get(page("user/transactions/missing_receipt?expand=organization", after), txPage)
     suspend fun missingReceiptCount() = get("user/transactions/missing_receipt?limit=1", txPage).total_count
+    suspend fun transactionById(id: String) = get("transactions/$id?expand=organization", Transaction.serializer())
     suspend fun transaction(org: String, id: String) = get("organizations/$org/transactions/$id", Transaction.serializer())
     suspend fun renameTransaction(org: String, id: String, memo: String) =
         send("organizations/$org/transactions/$id", "PATCH", Transaction.serializer(), jsonBody(buildJsonObject { put("memo", memo) }))

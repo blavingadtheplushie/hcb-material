@@ -14,6 +14,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.browser.auth.AuthTabIntent
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ink.blavingad.hcb.ui.AppRoot
 import ink.blavingad.hcb.ui.LockScreen
@@ -43,15 +44,37 @@ class MainActivity : FragmentActivity() {
             val unlocked by container.unlocked.collectAsStateWithLifecycle()
             val amoled by container.prefs.amoled.collectAsStateWithLifecycle()
             val secure by container.prefs.secure.collectAsStateWithLifecycle()
-            androidx.compose.runtime.LaunchedEffect(secure) {
-                if (secure) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-                else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-            }
+            val covered by this.covered.collectAsStateWithLifecycle()
+            androidx.compose.runtime.LaunchedEffect(secure) { applySecure() }
             HcbTheme(mode, amoled) {
-                if (lockOn && !unlocked && container.auth.tokens.value != null) LockScreen { container.unlocked.value = true }
-                else AppRoot(onSignIn = ::startSignIn)
+                // window background follows the theme, so nothing white ever flashes (recents, resize, startup)
+                val bg = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                androidx.compose.runtime.SideEffect { window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(bg.toArgb())) }
+                androidx.compose.foundation.layout.Box {
+                    if (lockOn && !unlocked && container.auth.tokens.value != null) LockScreen { container.unlocked.value = true }
+                    else AppRoot(onSignIn = ::startSignIn)
+                    // privacy cover shown in recents instead of the real screen (and instead of a blank white card)
+                    if (covered && secure) ink.blavingad.hcb.ui.PrivacyCover()
+                }
             }
         }
+    }
+
+    private val covered = kotlinx.coroutines.flow.MutableStateFlow(false)
+    private var foreground = false
+
+    /** FLAG_SECURE only while in the foreground: screenshots stay blocked, but the recents
+     *  thumbnail is our themed cover instead of Android's blank white card. */
+    private fun applySecure() {
+        val f = android.view.WindowManager.LayoutParams.FLAG_SECURE
+        if (container.prefs.secure.value && foreground) window.addFlags(f) else window.clearFlags(f)
+    }
+    override fun onResume() { super.onResume(); foreground = true; covered.value = false; applySecure() }
+    override fun onPause() {
+        foreground = false
+        if (container.prefs.secure.value) covered.value = true
+        applySecure()
+        super.onPause()
     }
 
     private var stoppedAt = 0L
@@ -76,6 +99,7 @@ class MainActivity : FragmentActivity() {
             intent.removeExtra("receipt_tx")
         }
         if (container.auth.isCallback(data)) { completeSignIn(data!!); intent.data = null }
+        else if (ink.blavingad.hcb.ui.isHcbLink(data)) { container.deepLink.value = data.toString(); intent.data = null }
     }
 
     private fun completeSignIn(uri: Uri) {

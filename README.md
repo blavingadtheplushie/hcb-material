@@ -1,4 +1,4 @@
-# HCB Material
+# HCB (unofficial Material You client)
 
 An unofficial, native Android client for [HCB](https://hcb.hackclub.com) (Hack Club's fiscal sponsorship bank),
 written in Kotlin + Jetpack Compose with **Material 3 Expressive** and your phone's **dynamic (Material You) colours**.
