@@ -44,6 +44,7 @@ import ink.blavingad.hcb.ui.SectionHeader
 import ink.blavingad.hcb.ui.SegmentedItem
 import ink.blavingad.hcb.ui.money
 import ink.blavingad.hcb.ui.rememberLoadable
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
@@ -81,7 +82,16 @@ fun HomeScreen() {
             LargeFlexibleTopAppBar(
                 title = { Text(user.data?.name?.substringBefore(' ')?.let { "Hey $it" } ?: "HCB") },
                 subtitle = { Text(orgs.data?.size?.let { if (it == 1) "1 organization" else "$it organizations" } ?: "Loading…") },
-                actions = { user.data?.let { Avatar(it.avatar, it.name, size = 36.dp_()) } },
+                actions = {
+                    user.data?.let { u ->
+                        androidx.compose.material3.IconButton({
+                            nav.navigate("settings") {
+                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true; restoreState = true
+                            }
+                        }, Modifier.padding(end = 8.dp_())) { Avatar(u.avatar, u.name, size = 36.dp_()) }
+                    }
+                },
                 scrollBehavior = scroll,
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface, scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer),
             )

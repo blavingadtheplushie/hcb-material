@@ -42,16 +42,16 @@ class TxWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, pa
             }
         } catch (_: Exception) { return Result.retry() }
         sp.edit { putStringSet("ids", seen.toList().takeLast(500).toSet()) }
-        fresh.take(5).forEach { notify(applicationContext, it) }
+        fresh.filter { c.prefs.notifyIncome.value || it.amount_cents < 0 }.take(5).forEach { notify(applicationContext, it) }
         return Result.success()
     }
 
     companion object {
         const val CHANNEL = "transactions"
-        fun schedule(ctx: Context) {
-            val req = PeriodicWorkRequestBuilder<TxWorker>(15, TimeUnit.MINUTES)
+        fun schedule(ctx: Context, minutes: Int = 15, replace: Boolean = false) {
+            val req = PeriodicWorkRequestBuilder<TxWorker>(minutes.coerceAtLeast(15).toLong(), TimeUnit.MINUTES)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
-            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("tx-poll", ExistingPeriodicWorkPolicy.KEEP, req)
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("tx-poll", if (replace) ExistingPeriodicWorkPolicy.UPDATE else ExistingPeriodicWorkPolicy.KEEP, req)
         }
 
         private fun channel(ctx: Context) {

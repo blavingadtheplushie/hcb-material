@@ -31,7 +31,8 @@ fun rememberReceiptUploader(txId: String?, onDone: () -> Unit): ReceiptUploader 
     val snack = LocalSnack.current
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
-    var pending by remember { mutableStateOf<Uri?>(null) }
+    // survives process death while the camera app is in front
+    var pending by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
 
     fun send(uri: Uri, fallbackName: String) {
         busy = true
@@ -53,20 +54,30 @@ fun rememberReceiptUploader(txId: String?, onDone: () -> Unit): ReceiptUploader 
 
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val u = pending; pending = null
-        if (ok && u != null) send(u, "receipt.jpg")
+        if (ok && u != null) send(Uri.parse(u), "receipt.jpg")
     }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { u -> if (u != null) send(u, "receipt") }
+    val latest = androidx.compose.runtime.rememberUpdatedState(snack)
 
     return remember {
         ReceiptUploader(
             camera = {
-                val dir = File(ctx.cacheDir, "camera").apply { mkdirs() }
-                val f = File(dir, "receipt-${System.currentTimeMillis()}.jpg")
-                val u = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
-                pending = u
-                takePicture.launch(u)
+                try {
+                    val dir = File(ctx.cacheDir, "camera").apply { mkdirs() }
+                    val f = File(dir, "receipt-${System.currentTimeMillis()}.jpg")
+                    val u = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
+                    pending = u.toString()
+                    c.skipRelock = true
+                    takePicture.launch(u)
+                } catch (e: Exception) {
+                    pending = null
+                    latest.value(if (e is android.content.ActivityNotFoundException) "No camera app found" else e.message ?: "Couldn't open the camera")
+                }
             },
-            file = { pick.launch(arrayOf("image/*", "application/pdf")) },
+            file = {
+                try { c.skipRelock = true; pick.launch(arrayOf("image/*", "application/pdf")) }
+                catch (e: Exception) { latest.value("No file picker found") }
+            },
             busyState = { busy },
         )
     }

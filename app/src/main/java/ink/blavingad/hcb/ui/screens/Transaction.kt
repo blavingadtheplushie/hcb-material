@@ -134,8 +134,10 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
             item { SectionHeader("Details") }
             itemsIndexed(rows) { i, (k, v) ->
                 SegmentedItem(i, rows.size) {
+                    val wallet = t.card_charge?.wallet?.takeIf { k == "Card" && it.isNotBlank() }
                     ListItem(colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        overlineContent = { Text(k) }, headlineContent = { Text(v) })
+                        overlineContent = { Text(k) }, headlineContent = { Text(v) },
+                        trailingContent = wallet?.let { w -> { ink.blavingad.hcb.ui.WalletIcon(w, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .7f)) } })
                 }
             }
             item {
@@ -232,7 +234,6 @@ private fun details(t: Transaction): List<Pair<String, String>> = buildList {
         cc.merchant?.let { m -> add("Merchant" to listOfNotNull(m.name, m.country).joinToString(" · ")) }
         cc.spent_at?.let { add("Spent at" to prettyDateTime(it)) }
         cc.card?.let { k -> add("Card" to listOfNotNull(k.user?.name, k.last4?.let { "•••• $it" }).joinToString(" · ")) }
-        cc.wallet?.let { add("Wallet" to it.replace('_', ' ')) }
         cc.decline_reason?.let { add("Decline reason" to it) }
     }
     t.donation?.let { d ->

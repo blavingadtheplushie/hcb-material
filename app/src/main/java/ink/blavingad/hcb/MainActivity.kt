@@ -41,7 +41,13 @@ class MainActivity : FragmentActivity() {
             val mode by container.prefs.theme.collectAsStateWithLifecycle()
             val lockOn by container.prefs.lock.collectAsStateWithLifecycle()
             val unlocked by container.unlocked.collectAsStateWithLifecycle()
-            HcbTheme(mode) {
+            val amoled by container.prefs.amoled.collectAsStateWithLifecycle()
+            val secure by container.prefs.secure.collectAsStateWithLifecycle()
+            androidx.compose.runtime.LaunchedEffect(secure) {
+                if (secure) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
+            HcbTheme(mode, amoled) {
                 if (lockOn && !unlocked && container.auth.tokens.value != null) LockScreen { container.unlocked.value = true }
                 else AppRoot(onSignIn = ::startSignIn)
             }
@@ -53,7 +59,9 @@ class MainActivity : FragmentActivity() {
     override fun onStart() {
         super.onStart()
         // relock after 30 s in the background (not when coming back from the camera / sign-in)
-        if (stoppedAt != 0L && System.currentTimeMillis() - stoppedAt > 30_000) container.unlocked.value = false
+        val skip = container.skipRelock; container.skipRelock = false
+        val delay = container.prefs.relockAfter.value * 1000L
+        if (!skip && stoppedAt != 0L && System.currentTimeMillis() - stoppedAt >= delay) container.unlocked.value = false
     }
 
     override fun onNewIntent(intent: Intent) {

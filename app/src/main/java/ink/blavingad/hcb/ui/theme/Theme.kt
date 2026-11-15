@@ -93,13 +93,22 @@ private val AppShapes = Shapes(
 )
 
 @Composable
-fun HcbTheme(mode: ThemeMode = ThemeMode.System, content: @Composable () -> Unit) {
+fun HcbTheme(mode: ThemeMode = ThemeMode.System, amoled: Boolean = false, content: @Composable () -> Unit) {
     val dark = when (mode) { ThemeMode.System -> isSystemInDarkTheme(); ThemeMode.Light -> false; ThemeMode.Dark -> true }
     val ctx = LocalContext.current
-    val scheme = remember(dark) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    val scheme = remember(dark, amoled) {
+        val base = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
         } else if (dark) BrandDark else BrandLight
+        // pure black for OLED: surfaces go to #000, containers stay slightly lifted so cards still read
+        if (dark && amoled) base.copy(
+            background = androidx.compose.ui.graphics.Color.Black, surface = androidx.compose.ui.graphics.Color.Black,
+            surfaceContainerLowest = androidx.compose.ui.graphics.Color.Black,
+            surfaceContainerLow = androidx.compose.ui.graphics.Color(0xFF0B0B0C),
+            surfaceContainer = androidx.compose.ui.graphics.Color(0xFF111113),
+            surfaceContainerHigh = androidx.compose.ui.graphics.Color(0xFF19191B),
+            surfaceContainerHighest = androidx.compose.ui.graphics.Color(0xFF222225),
+        ) else base
     }
     MaterialExpressiveTheme(colorScheme = scheme, motionScheme = MotionScheme.expressive(), shapes = AppShapes, typography = AppTypography, content = content)
 }

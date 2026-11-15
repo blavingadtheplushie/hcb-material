@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import ink.blavingad.hcb.container
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -14,6 +16,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
 import ink.blavingad.hcb.data.Transaction
 
@@ -51,7 +54,8 @@ fun Transaction.merchantName(): String? = card_charge?.merchant?.let { it.smart_
 @Composable
 fun MerchantIcon(t: Transaction, fallback: ImageVector, tint: Color, size: Dp) {
     val ctx = LocalContext.current
-    val slug = remember(t.id) { Brands.slugFor(ctx, t.merchantName()) }
+    val logos by ctx.container.prefs.logos.collectAsState()
+    val slug = remember(t.id, logos) { if (logos) Brands.slugFor(ctx, t.merchantName()) else null }
     var failed by remember(slug) { mutableStateOf(false) }
     if (slug == null || failed) { Icon(fallback, null, Modifier.size(size), tint = tint); return }
     SubcomposeAsyncImage(
@@ -60,4 +64,17 @@ fun MerchantIcon(t: Transaction, fallback: ImageVector, tint: Color, size: Dp) {
         loading = { Icon(fallback, null, Modifier.size(size), tint = tint) },
         error = { failed = true },
     )
+}
+
+/** Monochrome Apple Pay / Google Pay / Samsung Pay mark for card charges made through a phone wallet. */
+@Composable
+fun WalletIcon(wallet: String, tint: Color, modifier: Modifier = Modifier) {
+    val slug = when (wallet.lowercase()) {
+        "apple_pay" -> "applepay"; "google_pay" -> "googlepay"; "samsung_pay" -> "samsungpay"; else -> null
+    }
+    val label = wallet.replace('_', ' ').replaceFirstChar { it.uppercase() }
+    if (slug == null) { Icon(androidx.compose.material.icons.Icons.Outlined.Contactless, label, modifier.size(24.dp), tint = tint); return }
+    SubcomposeAsyncImage(model = Brands.url(slug), contentDescription = label, modifier = modifier.size(36.dp),
+        colorFilter = ColorFilter.tint(tint),
+        error = { Icon(androidx.compose.material.icons.Icons.Outlined.Contactless, label, Modifier.size(24.dp), tint = tint) })
 }

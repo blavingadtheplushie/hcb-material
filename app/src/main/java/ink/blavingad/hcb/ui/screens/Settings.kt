@@ -7,6 +7,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ScreenLockPortrait
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Code
@@ -51,6 +68,7 @@ fun SettingsScreen() {
     val ctx = LocalContext.current
     val c = ctx.container
     val scope = rememberCoroutineScope()
+    val snack = ink.blavingad.hcb.ui.LocalSnack.current
     val user = rememberLoadable("user") { c.api.user() }
     val theme by c.prefs.theme.collectAsStateWithLifecycle()
     val hide by c.prefs.hideBalances.collectAsStateWithLifecycle()
@@ -93,20 +111,106 @@ fun SettingsScreen() {
                         trailingContent = { Switch(hide, { c.prefs.setHide(it) }) })
                 }
             }
+            item {
+                val amoled by c.prefs.amoled.collectAsStateWithLifecycle()
+                val logos by c.prefs.logos.collectAsStateWithLifecycle()
+                Spacer(Modifier.height(8.dp))
+                SegmentedItem(0, 2, { c.prefs.setAmoled(!amoled) }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.DarkMode, null) },
+                        headlineContent = { Text("Pure black") }, supportingContent = { Text("True black background in dark mode, for OLED screens") },
+                        trailingContent = { Switch(amoled, { c.prefs.setAmoled(it) }) })
+                }
+                SegmentedItem(1, 2, { c.prefs.setLogos(!logos) }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Storefront, null) },
+                        headlineContent = { Text("Merchant logos") }, supportingContent = { Text("Brand icons on card charges (Simple Icons)") },
+                        trailingContent = { Switch(logos, { c.prefs.setLogos(it) }) })
+                }
+            }
             item { SectionHeader("Security & notifications") }
             item {
                 val lock by c.prefs.lock.collectAsStateWithLifecycle()
                 val notify by c.prefs.notify.collectAsStateWithLifecycle()
                 val toggleLock: (Boolean) -> Unit = { v -> scope.launch { if (ctx.authenticate(if (v) "Turn on app lock" else "Turn off app lock")) { c.prefs.setLock(v); c.unlocked.value = true } } }
-                SegmentedItem(0, 2, { toggleLock(!lock) }) {
+                val secure by c.prefs.secure.collectAsStateWithLifecycle()
+                val relock by c.prefs.relockAfter.collectAsStateWithLifecycle()
+                var relockMenu by remember { mutableStateOf(false) }
+                val relockLabel: (Int) -> String = { s -> when { s == 0 -> "Immediately"; s < 60 -> "After $s s"; else -> "After ${s / 60} min" } }
+                SegmentedItem(0, if (lock) 3 else 2, { toggleLock(!lock) }) {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Fingerprint, null) },
                         headlineContent = { Text("App lock") }, supportingContent = { Text("Fingerprint, face or screen lock to open the app") },
                         trailingContent = { Switch(lock, toggleLock) })
                 }
-                SegmentedItem(1, 2, { c.prefs.setNotify(!notify) }) {
+                if (lock) SegmentedItem(1, 3, { relockMenu = true }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Timer, null) },
+                        headlineContent = { Text("Lock again") }, supportingContent = { Text(relockLabel(relock) + " in the background") },
+                        trailingContent = {
+                            androidx.compose.foundation.layout.Box {
+                                Icon(Icons.Outlined.ExpandMore, null)
+                                DropdownMenu(relockMenu, { relockMenu = false }) {
+                                    listOf(0, 30, 60, 300, 900).forEach { s -> DropdownMenuItem({ Text(relockLabel(s)) }, { c.prefs.setRelockAfter(s); relockMenu = false }) }
+                                }
+                            }
+                        })
+                }
+                SegmentedItem(if (lock) 2 else 1, if (lock) 3 else 2, { c.prefs.setSecure(!secure) }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.ScreenLockPortrait, null) },
+                        headlineContent = { Text("Block screenshots") }, supportingContent = { Text("Also hides the app in the recents screen") },
+                        trailingContent = { Switch(secure, { c.prefs.setSecure(it) }) })
+                }
+            }
+            item { SectionHeader("Notifications") }
+            item {
+                val notify by c.prefs.notify.collectAsStateWithLifecycle()
+                val income by c.prefs.notifyIncome.collectAsStateWithLifecycle()
+                val every by c.prefs.notifyEvery.collectAsStateWithLifecycle()
+                var everyMenu by remember { mutableStateOf(false) }
+                val everyLabel: (Int) -> String = { m -> if (m < 60) "Every $m min" else if (m == 60) "Every hour" else "Every ${m / 60} h" }
+                val n = if (notify) 4 else 2
+                SegmentedItem(0, n, { c.prefs.setNotify(!notify) }) {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Notifications, null) },
-                        headlineContent = { Text("Transaction notifications") }, supportingContent = { Text("Checked every 15 min · tap to add a receipt") },
+                        headlineContent = { Text("Transaction notifications") }, supportingContent = { Text("Tap one to add a receipt") },
                         trailingContent = { Switch(notify, { c.prefs.setNotify(it) }) })
+                }
+                if (notify) {
+                    SegmentedItem(1, n, { everyMenu = true }) {
+                        ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Schedule, null) },
+                            headlineContent = { Text("Check for new transactions") }, supportingContent = { Text(everyLabel(every)) },
+                            trailingContent = {
+                                androidx.compose.foundation.layout.Box {
+                                    Icon(Icons.Outlined.ExpandMore, null)
+                                    DropdownMenu(everyMenu, { everyMenu = false }) {
+                                        listOf(15, 30, 60, 180, 360).forEach { m -> DropdownMenuItem({ Text(everyLabel(m)) }, {
+                                            c.prefs.setNotifyEvery(m); everyMenu = false
+                                            ink.blavingad.hcb.notify.TxWorker.schedule(ctx, m, replace = true)
+                                        }) }
+                                    }
+                                }
+                            })
+                    }
+                    SegmentedItem(2, n, { c.prefs.setNotifyIncome(!income) }) {
+                        ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Savings, null) },
+                            headlineContent = { Text("Incoming money too") }, supportingContent = { Text("Donations, transfers and other deposits") },
+                            trailingContent = { Switch(income, { c.prefs.setNotifyIncome(it) }) })
+                    }
+                }
+                SegmentedItem(n - 1, n, {
+                    ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, ctx.packageName))
+                }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Tune, null) },
+                        headlineContent = { Text("System notification settings") }, supportingContent = { Text("Sound, vibration, lock screen") })
+                }
+            }
+            item { SectionHeader("Storage") }
+            item {
+                SegmentedItem(0, 1, {
+                    ink.blavingad.hcb.ui.MemCache.clear()
+                    ctx.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+                    coil3.SingletonImageLoader.get(ctx).let { it.memoryCache?.clear(); it.diskCache?.clear() }
+                    snack("Cache cleared")
+                }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.CleaningServices, null) },
+                        headlineContent = { Text("Clear cache") }, supportingContent = { Text("Saved screens, images and logos. Everything reloads from HCB.") })
                 }
             }
             item { SectionHeader("Account") }
@@ -123,10 +227,14 @@ fun SettingsScreen() {
             }
             item { SectionHeader("About") }
             item {
-                SegmentedItem(0, 1, { ctx.openUrl("https://github.com/blavingadtheplushie/hcb-material") }) {
+                SegmentedItem(0, 2, { ctx.openUrl("https://github.com/blavingadtheplushie/hcb-material") }) {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Code, null) },
                         headlineContent = { Text("HCB Material ${BuildConfig.VERSION_NAME}") },
                         supportingContent = { Text("Unofficial, GPLv3 · made by a plushie octopus") })
+                }
+                SegmentedItem(1, 2, { ctx.openUrl("https://github.com/blavingadtheplushie/hcb-material/issues/new") }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.BugReport, null) },
+                        headlineContent = { Text("Report a bug") })
                 }
             }
         }

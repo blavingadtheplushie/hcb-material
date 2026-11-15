@@ -104,7 +104,23 @@ fun OrgScreen(id: String) {
     InfiniteLoader(list, txs)
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val o = org.data
+    var creating by rememberSaveable { mutableStateOf(false) }
+    if (creating && o != null) ink.blavingad.hcb.ui.CreateCardSheet(o.id, o.name, onDismiss = { creating = false }) { k ->
+        creating = false; scope.launch { cards.load() }; nav.navigate("card/${k.id}")
+    }
     Scaffold(
+        floatingActionButton = {
+            androidx.compose.animation.AnimatedVisibility(tab == 1 && o != null,
+                enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut()) {
+                androidx.compose.material3.ExtendedFloatingActionButton(
+                    onClick = { creating = true },
+                    icon = { Icon(androidx.compose.material.icons.Icons.Filled.Add, null) },
+                    text = { Text("New card") },
+                    expanded = list.firstVisibleItemIndex < 2,
+                )
+            }
+        },
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {

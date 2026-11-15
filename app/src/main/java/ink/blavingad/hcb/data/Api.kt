@@ -110,3 +110,15 @@ class Api(private val http: OkHttpClient, private val auth: Auth, val json: Json
         return send("comments", "POST", Comment.serializer(), body)
     }
 }
+
+/** POST /cards — virtual, or physical (HCB only ships to the US). */
+suspend fun Api.createCard(orgId: String, type: String, shipping: Map<String, String> = emptyMap()): Card {
+    val body = kotlinx.serialization.json.buildJsonObject {
+        put("card", kotlinx.serialization.json.buildJsonObject {
+            put("organization_id", kotlinx.serialization.json.JsonPrimitive(orgId))
+            put("card_type", kotlinx.serialization.json.JsonPrimitive(type))
+            shipping.filterValues { it.isNotBlank() }.forEach { (k, v) -> put(k, kotlinx.serialization.json.JsonPrimitive(v)) }
+        })
+    }.toString().toRequestBody("application/json".toMediaType())
+    return json.decodeFromString(Card.serializer(), raw("cards", "POST", body))
+}

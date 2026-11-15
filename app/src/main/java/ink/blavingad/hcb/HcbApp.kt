@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
 
 class HcbApp : Application(), SingletonImageLoader.Factory {
     lateinit var container: Container
-    override fun onCreate() { super.onCreate(); container = Container(this); ink.blavingad.hcb.notify.TxWorker.schedule(this) }
+    override fun onCreate() { super.onCreate(); container = Container(this); ink.blavingad.hcb.notify.TxWorker.schedule(this, container.prefs.notifyEvery.value) }
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
         .components { add(OkHttpNetworkFetcherFactory(callFactory = { container.http })); add(coil3.svg.SvgDecoder.Factory()) }
         .build()
@@ -33,6 +33,7 @@ class Container(context: Context) {
     val api = Api(http, auth, json)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     val prefs = Prefs(context)
+    @Volatile var skipRelock = false
     val unlocked = kotlinx.coroutines.flow.MutableStateFlow(false)
     val receiptShortcut = kotlinx.coroutines.flow.MutableStateFlow<ink.blavingad.hcb.ui.ReceiptShortcut?>(null)
 }
