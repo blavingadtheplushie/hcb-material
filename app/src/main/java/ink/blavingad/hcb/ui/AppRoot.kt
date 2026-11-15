@@ -77,7 +77,6 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val showBar = Tab.entries.any { it.route == route }
-    val spec = spring<IntOffset>(dampingRatio = 0.9f, stiffness = 500f)
 
     CompositionLocalProvider(LocalNav provides nav, LocalSnack provides { m: String -> scope.launch { snack.showSnackbar(m) }; Unit }) {
         Scaffold(
@@ -104,19 +103,19 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
         ) { pad ->
             NavHost(
                 nav, startDestination = "home", modifier = Modifier.fillMaxSize().padding(bottom = pad.calculateBottomPadding()),
-                enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, spec) + fadeIn() },
-                exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, spec, targetOffset = { it / 4 }) + fadeOut() },
-                popEnterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, spec, initialOffset = { it / 4 }) + fadeIn() },
-                popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, spec) + fadeOut() },
+                enterTransition = AppMotion.enter, exitTransition = AppMotion.exit,
+                popEnterTransition = AppMotion.popEnter, popExitTransition = AppMotion.popExit,
+                predictivePopEnterTransition = AppMotion.predictivePopEnter,
+                predictivePopExitTransition = AppMotion.predictivePopExit,
             ) {
-                composable("home", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { HomeScreen() }
-                composable("cards", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { CardsScreen() }
-                composable("receipts", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { ReceiptsScreen() }
-                composable("settings", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { SettingsScreen() }
-                composable("org/{id}") { OrgScreen(it.arguments?.getString("id")!!) }
-                composable("tx/{org}/{id}") { TransactionScreen(it.arguments?.getString("org")!!, it.arguments?.getString("id")!!) }
-                composable("card/{id}") { CardScreen(it.arguments?.getString("id")!!) }
-                composable("invite/{id}") { InvitationScreen(it.arguments?.getString("id")!!) }
+                composable("home", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { UnderlayFrame { HomeScreen() } }
+                composable("cards", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { UnderlayFrame { CardsScreen() } }
+                composable("receipts", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { UnderlayFrame { ReceiptsScreen() } }
+                composable("settings", enterTransition = { fadeIn() }, exitTransition = { fadeOut() }) { UnderlayFrame { SettingsScreen() } }
+                composable("org/{id}") { CardFrame { OrgScreen(it.arguments?.getString("id")!!) } }
+                composable("tx/{org}/{id}") { CardFrame { TransactionScreen(it.arguments?.getString("org")!!, it.arguments?.getString("id")!!) } }
+                composable("card/{id}") { CardFrame { CardScreen(it.arguments?.getString("id")!!) } }
+                composable("invite/{id}") { CardFrame { InvitationScreen(it.arguments?.getString("id")!!) } }
             }
         }
     }
