@@ -211,7 +211,7 @@ fun BalanceHero(balance: Long?, fees: Long?, series: List<Double> = emptyList())
             ink.blavingad.hcb.ui.BgShape(androidx.compose.material3.MaterialShapes.Cookie12Sided, cs.onPrimaryContainer.copy(alpha = .08f),
                 Modifier.align(Alignment.CenterEnd).offset(x = 60.dp).size(200.dp))
             if (balance != null && series.size > 1) ink.blavingad.hcb.ui.AreaChart(series, cs.onPrimaryContainer,
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(80.dp))
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(100.dp))
             Column(Modifier.padding(24.dp)) {
                 Text("Balance", style = MaterialTheme.typography.labelLarge)
                 Text(if (balance == null) "••••" else money(balance), style = MaterialTheme.typography.displayMediumEmphasized)

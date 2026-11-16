@@ -115,7 +115,7 @@ fun HomeScreen() {
                             activeCards = cards.data?.count { it.status == "active" },
                             spentMonth = recent.data?.filter { (it.date ?: "").startsWith(month) && it.amount_cents < 0 && !it.declined }?.sumOf { -it.amount_cents },
                             last = recent.data?.firstOrNull(), hide = hide,
-                            balanceSeries = history.data?.let { ink.blavingad.hcb.ui.sumSeries(it) }.orEmpty(),
+                            balanceSeries = history.data?.let { ink.blavingad.hcb.ui.sumSeries(it).downsample(90) }.orEmpty(),
                             dailySpend = recent.data?.let { r ->
                                 val today = java.time.LocalDate.now()
                                 (1..today.dayOfMonth).map { d -> val day = today.withDayOfMonth(d).toString()

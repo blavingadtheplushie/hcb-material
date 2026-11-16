@@ -22,7 +22,7 @@ import ink.blavingad.hcb.data.BalancePoint
 
 /** Smooth area chart meant to sit half-faded behind a card's content. Draws in from the left once. */
 @Composable
-fun AreaChart(values: List<Double>, color: Color, modifier: Modifier = Modifier, fill: Float = .22f, line: Float = .55f) {
+fun AreaChart(values: List<Double>, color: Color, modifier: Modifier = Modifier, fill: Float = .32f, line: Float = .7f) {
     if (values.size < 2) return
     val reveal = remember(values.size) { Animatable(0f) }
     LaunchedEffect(values.size) { reveal.animateTo(1f, tween(900)) }
@@ -66,27 +66,30 @@ fun BarsChart(values: List<Double>, color: Color, modifier: Modifier = Modifier,
     }
 }
 
-/** Downsample a balance series to ~n points (keeps last). */
-fun List<BalancePoint>.series(n: Int = 60): List<Double> {
-    if (isEmpty()) return emptyList()
-    if (size <= n) return map { it.amount.toDouble() }
+/** One org's balance as a continuous daily series (last value carried forward), downsampled to ~n points. */
+fun List<BalancePoint>.series(days: Int = 180, n: Int = 90): List<Double> = sumSeries(listOf(this), days).downsample(n)
+
+fun List<Double>.downsample(n: Int): List<Double> {
+    if (size <= n) return this
     val step = size.toDouble() / n
-    return (0 until n).map { this[(it * step).toInt()].amount.toDouble() } + last().amount.toDouble()
+    return (0 until n).map { this[(it * step).toInt()] } + last()
 }
 
 /** Sum several orgs' balance series on a common daily axis (carrying each org's last value forward). */
-fun sumSeries(all: List<List<BalancePoint>>, days: Int = 90): List<Double> {
-    if (all.isEmpty()) return emptyList()
+fun sumSeries(all: List<List<BalancePoint>>, days: Int = 180): List<Double> {
+    if (all.isEmpty() || all.all { it.isEmpty() }) return emptyList()
     val today = java.time.LocalDate.now()
     val axis = (days downTo 0).map { today.minusDays(it.toLong()) }
     val totals = DoubleArray(axis.size)
     all.forEach { s ->
         val sorted = s.mapNotNull { p -> runCatching { java.time.LocalDate.parse(p.date) to p.amount }.getOrNull() }.sortedBy { it.first }
-        var j = 0; var cur = 0L
+        var j = 0; var cur = 0.0
         axis.forEachIndexed { i, d ->
             while (j < sorted.size && !sorted[j].first.isAfter(d)) { cur = sorted[j].second; j++ }
-            totals[i] += cur.toDouble()
+            totals[i] += cur
         }
     }
-    return totals.toList()
+    // trim the flat zero run before the first org existed
+    val first = totals.indexOfFirst { it != 0.0 }.coerceAtLeast(0)
+    return totals.drop(first).let { if (it.size < 2) totals.toList() else it }
 }

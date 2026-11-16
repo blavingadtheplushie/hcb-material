@@ -14,7 +14,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 @Serializable
-data class BalancePoint(val date: String = "", val amount: Long = 0)
+data class BalancePoint(val date: String = "", val amount: Double = 0.0)
 
 @Serializable
 data class OutCheck(
@@ -73,7 +73,14 @@ private fun JsonObject.body() = toString().toRequestBody("application/json".toMe
 private fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
 
 // ---- charts ----
-suspend fun Api.balanceByDate(org: String) = get("organizations/$org/balance_by_date", ListSerializer(BalancePoint.serializer()))
+/** hcb sums with SQL, so `amount` may be a number or a decimal string ("12345.0"): parse both. */
+suspend fun Api.balanceByDate(org: String): List<BalancePoint> =
+    (json.parseToJsonElement(raw("organizations/$org/balance_by_date")) as? JsonArray).orEmpty().mapNotNull { e ->
+        val o = e as? JsonObject ?: return@mapNotNull null
+        val d = (o["date"] as? JsonPrimitive)?.content ?: return@mapNotNull null
+        val a = (o["amount"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return@mapNotNull null
+        BalancePoint(d.take(10), a)
+    }
 
 // ---- transactions extras ----
 suspend fun Api.memoSuggestions(org: String, tx: String): List<String> = runCatching {

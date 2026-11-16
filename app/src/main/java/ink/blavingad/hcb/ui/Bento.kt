@@ -71,7 +71,7 @@ fun BentoGrid(
         Tile(Modifier.fillMaxWidth(), 150.dp, cs.primaryContainer, cs.onPrimaryContainer, MaterialShapes.Cookie12Sided,
             Icons.Outlined.AccountBalanceWallet, "Total balance", m(total), if (orgCount == 1) "across 1 organization" else "across $orgCount organizations", big = true,
             chart = if (balanceSeries.size > 1 && !hide) ({
-                AreaChart(balanceSeries, cs.onPrimaryContainer, Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(96.dp))
+                AreaChart(balanceSeries, cs.onPrimaryContainer, Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(110.dp))
             }) else null)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Tile(Modifier.weight(1f), 120.dp, if (missing > 0) cs.errorContainer else cs.surfaceContainerHigh, if (missing > 0) cs.onErrorContainer else cs.onSurface,
