@@ -51,13 +51,17 @@ class Fx(context: Context, private val http: OkHttpClient, private val json: Jso
 
     private val visaDate = DateTimeFormatter.ofPattern("MM/dd/yyyy")
 
+    /**
+     * Visa quotes are directional (buy/sell spread, ~0.5 %): fromCurr = the cardholder's billing currency (USD for HCB),
+     * toCurr = the merchant's currency. Querying it the other way round gave a rate ~0.5 % off (25.13 € instead of 25.00 €).
+     */
     /** Visa publishes one rate per day; today's may not exist yet, so walk back a few days. */
     private fun visa(to: String, day: LocalDate, ecbHint: Double?): Rate? {
-        val key = "visa:$to:$day"
+        val key = "visa2:$to:$day"
         cached(key)?.let { return it }
         for (back in 0L..3L) {
             val d = day.minusDays(back).format(visaDate).replace("/", "%2F")
-            val url = "https://usa.visa.com/cmsapi/fx/rates?amount=1&fee=0&utcConvertedDate=$d&exchangedate=$d&fromCurr=$to&toCurr=USD"
+            val url = "https://usa.visa.com/cmsapi/fx/rates?amount=1&fee=0&utcConvertedDate=$d&exchangedate=$d&fromCurr=USD&toCurr=$to"
             val body = runCatching {
                 http.newCall(Request.Builder().url(url)
                     .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36")
