@@ -58,6 +58,10 @@ class Api(private val http: OkHttpClient, private val auth: Auth, val json: Json
     suspend fun orgBalance(id: String) = get("organizations/$id?expand=balance_cents", Organization.serializer())
     suspend fun invitations() = get("user/invitations", ListSerializer(Invitation.serializer()))
     suspend fun invitation(id: String) = get("user/invitations/$id?expand=organization,sender", Invitation.serializer())
+    suspend fun orgInvitations(org: String) = get("organizations/$org/invitations?expand=invitee,sender", ListSerializer(Invitation.serializer()))
+    suspend fun invite(org: String, email: String, role: String) = send("organizations/$org/invitations", "POST", Invitation.serializer(),
+        jsonBody(buildJsonObject { put("email", email); put("role", role) }))
+    suspend fun cancelInvitation(org: String, id: String) { raw("organizations/$org/invitations/$id", "DELETE") }
     suspend fun respondInvitation(id: String, accept: Boolean) { raw("user/invitations/$id/${if (accept) "accept" else "reject"}", "POST") }
 
     private fun page(base: String, after: String?, limit: Int = 30): String {

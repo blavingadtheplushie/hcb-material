@@ -3,7 +3,10 @@ package ink.blavingad.hcb.data
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class User(val id: String = "", val name: String = "", val email: String? = null, val avatar: String? = null, val admin: Boolean? = null)
+data class User(val id: String = "", val name: String = "", val email: String? = null, val avatar: String? = null, val admin: Boolean? = null, val card_locking: CardLocking? = null)
+
+@Serializable
+data class CardLocking(val locked: Boolean = false, val overdue_receipt_count: Int = 0)
 
 @Serializable
 data class Organization(
@@ -81,7 +84,7 @@ data class Receipt(val id: String = "", val url: String? = null, val preview_url
 data class Comment(val id: String = "", val content: String = "", val user: User? = null, val created_at: String? = null, val file: String? = null, val admin_only: Boolean? = null)
 
 @Serializable
-data class Invitation(val id: String = "", val accepted: Boolean = false, val role: String? = null, val sender: User? = null, val organization: Organization? = null, val created_at: String? = null)
+data class Invitation(val id: String = "", val accepted: Boolean = false, val role: String? = null, val sender: User? = null, val invitee: User? = null, val organization: Organization? = null, val created_at: String? = null)
 
 @Serializable
 data class Paginated<T>(val total_count: Int = 0, val has_more: Boolean = false, val data: List<T> = emptyList())

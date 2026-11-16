@@ -42,6 +42,7 @@ class TxWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, pa
             }
         } catch (_: Exception) { return Result.retry() }
         sp.edit { putStringSet("ids", seen.toList().takeLast(500).toSet()) }
+        if (fresh.isNotEmpty() || first) ink.blavingad.hcb.widget.BalanceWidget.refresh(applicationContext)
         fresh.filter { c.prefs.notifyIncome.value || it.amount_cents < 0 }.take(5).forEach { notify(applicationContext, it) }
         return Result.success()
     }

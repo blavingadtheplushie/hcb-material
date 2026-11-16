@@ -1,1 +1,4 @@
-<resources><string name="app_name">HCB</string></resources>
+<resources>
+    <string name="app_name">HCB</string>
+    <string name="widget_balance_desc">Total balance across your orgs and missing receipts</string>
+</resources>

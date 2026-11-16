@@ -99,6 +99,7 @@ fun CardScreen(id: String) {
     val snack = LocalSnack.current
     val scope = rememberCoroutineScope()
     val card = rememberLoadable(id) { c.api.card(id) }
+    val me = rememberLoadable("user") { c.api.user() }
     val grants = rememberLoadable("grants") { c.api.cardGrants().filter { it.card_id != null }.associateBy { it.card_id!! } }
     val txs = rememberPaged<Transaction>(id, idOf = { it.id }) { after -> c.api.cardTransactions(id, after) }
     var busy by remember { mutableStateOf(false) }
@@ -120,6 +121,8 @@ fun CardScreen(id: String) {
         if (k == null) { if (card.error != null) ErrorState(card.error!!, { scope.launch { card.load() } }, Modifier.padding(pad)) else CenterLoading(Modifier.padding(pad)); return@Scaffold }
         RefreshBox(card.loading || (txs.loading && txs.items != null), { scope.launch { card.load(); txs.refresh() } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
+                // only the cardholder sees their own locked state, not a manager viewing someone else's card
+                if (me.data != null && k.user?.id == me.data?.id) item { ink.blavingad.hcb.ui.CardLockBanner(me.data?.card_locking) }
                 item { CardArt(k, Modifier.padding(16.dp), grant = grants.data?.get(k.id), showOwner = true) }
                 item {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

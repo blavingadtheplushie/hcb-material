@@ -24,6 +24,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
@@ -96,6 +98,7 @@ fun OrgScreen(id: String) {
     val c = LocalContext.current.container
     val ctx = LocalContext.current
     val nav = LocalNav.current
+    val snack = ink.blavingad.hcb.ui.LocalSnack.current
     val scope = rememberCoroutineScope()
     val hide by c.prefs.hideBalances.collectAsStateWithLifecycle()
     val org = rememberLoadable(id) { c.api.organization(id) }
@@ -113,11 +116,27 @@ fun OrgScreen(id: String) {
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val o = org.data
     var creating by rememberSaveable { mutableStateOf(false) }
+    val me = rememberLoadable("user") { c.api.user() }
+    // HCB: can_invite_user? = admin_or_manager?
+    val canInvite = o != null && me.data != null && (me.data?.admin == true || o.users.orEmpty().any { it.id == me.data?.id && it.role == "manager" })
+    var inviting by rememberSaveable { mutableStateOf(false) }
+    val invites = rememberLoadable("orgInv", id, tab == 2 && canInvite) { if (tab == 2 && canInvite) runCatching { c.api.orgInvitations(id) }.getOrDefault(emptyList()) else null }
+    if (inviting && o != null) ink.blavingad.hcb.ui.InviteSheet(o.id, o.name, onDismiss = { inviting = false }) { scope.launch { invites.load() } }
     if (creating && o != null) ink.blavingad.hcb.ui.CreateCardSheet(o.id, o.name, onDismiss = { creating = false }) { k ->
         creating = false; scope.launch { cards.load() }; nav.navigate("card/${k.id}")
     }
     Scaffold(
         floatingActionButton = {
+            androidx.compose.animation.AnimatedVisibility(tab == 2 && canInvite,
+                enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut()) {
+                androidx.compose.material3.ExtendedFloatingActionButton(
+                    onClick = { inviting = true },
+                    icon = { Icon(androidx.compose.material.icons.Icons.Outlined.PersonAdd, null) },
+                    text = { Text("Invite") },
+                    expanded = list.firstVisibleItemIndex < 2,
+                )
+            }
             androidx.compose.animation.AnimatedVisibility(tab == 1 && o != null,
                 enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn(),
                 exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut()) {
@@ -185,6 +204,26 @@ fun OrgScreen(id: String) {
                         }
                     }
                     else -> {
+                        val pending = invites.data.orEmpty().filter { !it.accepted }
+                        if (pending.isNotEmpty()) {
+                            item { SectionHeader("Pending invites") }
+                            itemsIndexed(pending, key = { _, iv -> "inv-" + iv.id }) { i, iv ->
+                                SegmentedItem(i, pending.size) {
+                                    ListItem(colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                        leadingContent = { Avatar(iv.invitee?.avatar, iv.invitee?.name ?: iv.invitee?.email ?: "?") },
+                                        headlineContent = { Text(iv.invitee?.name?.takeIf { it.isNotBlank() } ?: iv.invitee?.email ?: "Invited") },
+                                        supportingContent = { Text(listOfNotNull(iv.invitee?.email?.takeIf { iv.invitee?.name?.isNotBlank() == true }, iv.role?.replaceFirstChar { it.uppercase() }, iv.sender?.name?.let { "by $it" }).joinToString(" · ")) },
+                                        trailingContent = {
+                                            IconButton({ scope.launch {
+                                                runCatching { c.api.cancelInvitation(id, iv.id) }
+                                                    .onSuccess { snack("Invite cancelled"); invites.load() }
+                                                    .onFailure { snack(it.message ?: "Couldn't cancel") }
+                                            } }) { Icon(androidx.compose.material.icons.Icons.Outlined.Close, "Cancel invite") }
+                                        })
+                                }
+                            }
+                            item { SectionHeader("Team") }
+                        }
                         val users = o.users.orEmpty()
                         if (users.isEmpty()) item { EmptyState(Icons.Outlined.Groups, "No team info") }
                         itemsIndexed(users, key = { _, u -> u.id }) { i, u ->

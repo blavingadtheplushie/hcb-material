@@ -89,4 +89,6 @@ dependencies {
     implementation(libs.work.runtime)
     implementation(libs.biometric)
     implementation(libs.fragment)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 }

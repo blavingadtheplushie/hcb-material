@@ -107,6 +107,7 @@ fun HomeScreen() {
             orgs.data == null -> CenterLoading(Modifier.padding(pad))
             else -> RefreshBox(orgs.loading || user.loading, refreshAll, Modifier.fillMaxSize().padding(pad)) {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = ListBottom) {
+                    item(key = "cardlock") { ink.blavingad.hcb.ui.CardLockBanner(user.data?.card_locking) }
                     item {
                         val month = java.time.LocalDate.now().toString().take(7)
                         val list0 = orgs.data!!
