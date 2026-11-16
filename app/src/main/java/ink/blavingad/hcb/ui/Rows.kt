@@ -96,29 +96,27 @@ fun TxRow(t: Transaction, index: Int, count: Int, showOrg: Boolean = false, onCl
 }
 
 /** Card art. Flat colours only, no gradients.
- *  Virtual cards: style A "cookie" (big cropped shape, picked from the card id) or B "collage" (several shapes).
+ *  Virtual cards: style A "cookie" (big cropped shape, picked from the card id). Dark theme = dark card + dim shape.
  *  Physical cards: style C "minimal" (surface + primary outline + small flower). Frozen/inactive: grey, shape as outline. */
 private val cookieShapes = listOf(MaterialShapes.Cookie9Sided, MaterialShapes.Cookie12Sided, MaterialShapes.Cookie7Sided, MaterialShapes.Sunny,
     MaterialShapes.SoftBurst, MaterialShapes.Flower, MaterialShapes.Clover8Leaf, MaterialShapes.Cookie6Sided)
 
 private fun Color.lum() = 0.2126f * red + 0.7152f * green + 0.0722f * blue
-/** Keep a shape colour visible on bg: if both are too close (monochrome themes), push it towards ink. */
-private fun visible(c: Color, bg: Color, ink: Color, min: Float = .16f): Color =
-    if (kotlin.math.abs(c.lum() - bg.lum()) >= min) c
-    else Color(bg.red + (ink.red - bg.red) * .45f, bg.green + (ink.green - bg.green) * .45f, bg.blue + (ink.blue - bg.blue) * .45f, 1f)
 
 @Composable
 fun CardArt(card: Card, modifier: Modifier = Modifier, grant: ink.blavingad.hcb.data.CardGrant? = null, showOwner: Boolean = false) {
     val cs = MaterialTheme.colorScheme
-    val style by androidx.compose.ui.platform.LocalContext.current.container.prefs.cardStyle.collectAsStateWithLifecycle()
     val frozen = card.status == "frozen"
     val inactive = card.status != "active" && !frozen
     val dim = frozen || inactive
     val physical = card.type == "physical"
     val seed = (card.id.hashCode() and 0x7fffffff)
-    val collage = !physical && style == "collage"
-    val bg = when { dim -> cs.surfaceContainerHigh; physical -> cs.surface; collage -> cs.surfaceContainerHigh; else -> cs.primaryContainer }
-    val fg = when { dim -> cs.onSurfaceVariant; physical || collage -> cs.onSurface; else -> cs.onPrimaryContainer }
+    // dark theme: keep cards dark (no big bright slab / white cookie), the shape is only a soft tint of primary
+    val dark = cs.surface.lum() < .5f
+    val bg = when { physical -> cs.surface; dark && dim -> cs.surfaceContainerLow; dark -> cs.surfaceContainerHigh; dim -> cs.surfaceContainerHigh; else -> cs.primaryContainer }
+    val fg = when { dim -> cs.onSurfaceVariant; physical || dark -> cs.onSurface; else -> cs.onPrimaryContainer }
+    val shapeColor = if (dark) androidx.compose.ui.graphics.lerp(bg, cs.primary, .28f) else cs.primary
+    val dimLine = if (dark) cs.outlineVariant else cs.outline
     val cardShape = RoundedCornerShape(24.dp)
     Box(modifier.fillMaxWidth().aspectRatio(1.586f).clip(cardShape).background(bg)
         .then(if (physical) Modifier.border(2.dp, if (dim) cs.outline else cs.primary, cardShape) else Modifier)) {
@@ -127,24 +125,10 @@ fun CardArt(card: Card, modifier: Modifier = Modifier, grant: ink.blavingad.hcb.
                 val m = Modifier.align(Alignment.TopEnd).padding(18.dp).size(34.dp)
                 if (dim) Box(m.border(2.dp, cs.outline, MaterialShapes.Flower.toShape())) else Box(m.clip(MaterialShapes.Flower.toShape()).background(cs.primary))
             }
-            collage -> {
-                val ink = cs.onSurface
-                val c1 = if (dim) cs.outline else visible(cs.primary, bg, ink)
-                val c2 = if (dim) cs.outlineVariant else visible(cs.tertiary, bg, ink)
-                val c3 = if (dim) cs.outline else visible(cs.secondaryContainer, bg, ink)
-                val c4 = if (dim) cs.outlineVariant else visible(cs.inversePrimary, bg, ink)
-                fun Modifier.fillOrLine(sh: androidx.compose.ui.graphics.Shape, c: Color) = if (dim) border(2.dp, c, sh) else clip(sh).background(c)
-                val pill = RoundedCornerShape(50)
-                // tall pill, flower, circle, triangle, kept on the right so the text stays readable
-                Box(Modifier.align(Alignment.TopEnd).offset(x = (-78).dp, y = (-28).dp).size(width = 56.dp, height = 130.dp).rotate(-14f).fillOrLine(pill, c1))
-                Box(Modifier.align(Alignment.TopEnd).offset(x = (-10).dp, y = 22.dp).size(70.dp).rotate(seed % 40f).fillOrLine(MaterialShapes.Flower.toShape(), c2))
-                Box(Modifier.align(Alignment.BottomEnd).offset(x = 24.dp, y = 24.dp).size(104.dp).fillOrLine(androidx.compose.foundation.shape.CircleShape, c3))
-                Box(Modifier.align(Alignment.BottomEnd).offset(x = (-96).dp, y = 10.dp).size(64.dp).rotate(-8f).fillOrLine(MaterialShapes.Triangle.toShape(), c4))
-            }
             else -> {
                 val sh = cookieShapes[seed % cookieShapes.size]
                 val m = Modifier.align(Alignment.BottomEnd).offset(x = 64.dp, y = 76.dp).size(230.dp).rotate((seed / 8 % 60).toFloat())
-                if (dim) Box(m.border(3.dp, cs.outline, sh.toShape())) else Box(m.clip(sh.toShape()).background(cs.primary))
+                if (dim) Box(m.border(3.dp, dimLine, sh.toShape())) else Box(m.clip(sh.toShape()).background(shapeColor))
             }
         }
         Box(Modifier.fillMaxSize().padding(20.dp)) {

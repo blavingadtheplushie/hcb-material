@@ -130,22 +130,6 @@ fun SettingsScreen() {
                 }
             }
             item {
-                val cardStyle by c.prefs.cardStyle.collectAsStateWithLifecycle()
-                Spacer(Modifier.height(8.dp))
-                SegmentedItem(0, 1, { c.prefs.setCardStyle(if (cardStyle == "collage") "cookie" else "collage") }) {
-                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.CreditCard, null) },
-                        headlineContent = { Text("Card design") },
-                        supportingContent = { Text((if (cardStyle == "collage") "Collage" else "Cookie") + " for virtual cards · physical cards keep the outline design") },
-                        trailingContent = {
-                            Row(horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
-                                listOf("cookie" to "Cookie", "collage" to "Collage").forEach { (k, l) ->
-                                    ToggleButton(cardStyle == k, { c.prefs.setCardStyle(k) }) { Text(l) }
-                                }
-                            }
-                        })
-                }
-            }
-            item {
                 val conv by c.prefs.convertTo.collectAsStateWithLifecycle()
                 var convMenu by remember { mutableStateOf(false) }
                 Spacer(Modifier.height(8.dp))
