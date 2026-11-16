@@ -40,13 +40,11 @@ fun LockScreen(onUnlocked: () -> Unit) {
     Box(Modifier.fillMaxSize().background(cs.surface), contentAlignment = Alignment.Center) {
         BgShape(MaterialShapes.Cookie12Sided, cs.primary.copy(alpha = .08f), Modifier.size(420.dp))
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            HcbLogoCookie(112.dp)
-            Text("HCB is locked", style = MaterialTheme.typography.headlineSmallEmphasized, color = cs.onSurface)
-            Button(tryUnlock, shapes = ButtonDefaults.shapes()) {
-                Icon(Icons.Outlined.Fingerprint, null, Modifier.size(ButtonDefaults.IconSize))
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Unlock")
+            Box(Modifier.size(96.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primaryContainer), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Fingerprint, null, Modifier.size(48.dp), tint = cs.onPrimaryContainer)
             }
+            Text("HCB is locked", style = MaterialTheme.typography.headlineSmallEmphasized, color = cs.onSurface)
+            Button(tryUnlock, shapes = ButtonDefaults.shapes()) { Text("Unlock") }
         }
     }
 }

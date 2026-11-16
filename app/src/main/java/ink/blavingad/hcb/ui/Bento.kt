@@ -41,7 +41,7 @@ private fun Tile(
 ) {
     val content: @Composable () -> Unit = {
         Box(Modifier.height(height).clip(RoundedCornerShape(28.dp)).background(bg)) {
-            BgShape(shape, fg.copy(alpha = if (chart != null) .05f else .08f), Modifier.align(Alignment.BottomEnd).offset(x = 40.dp, y = 40.dp).size(if (big) 220.dp else 140.dp))
+            if (chart == null) BgShape(shape, fg.copy(alpha = .08f), Modifier.align(Alignment.BottomEnd).offset(x = 40.dp, y = 40.dp).size(if (big) 220.dp else 140.dp))
             chart?.invoke(this)
             Column(Modifier.padding(18.dp).fillMaxWidth(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

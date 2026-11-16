@@ -48,9 +48,7 @@ fun LoginScreen(onSignIn: (Boolean) -> Unit) {
     Surface(color = cs.surface, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.weight(1f))
-            Box(Modifier.size(140.dp).clip(MaterialShapes.Sunny.toShape()).background(cs.primaryContainer), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.AccountBalance, null, Modifier.size(64.dp), tint = cs.onPrimaryContainer)
-            }
+            ink.blavingad.hcb.ui.HcbLogoCookie(140.dp)
             Spacer(Modifier.height(32.dp))
             Text("HCB", style = MaterialTheme.typography.displayLargeEmphasized, color = cs.onSurface)
             Text(phrase, style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant, textAlign = TextAlign.Center)

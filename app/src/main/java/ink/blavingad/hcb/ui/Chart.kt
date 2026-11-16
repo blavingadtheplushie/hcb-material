@@ -11,6 +11,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -22,11 +25,11 @@ import ink.blavingad.hcb.data.BalancePoint
 
 /** Smooth area chart meant to sit half-faded behind a card's content. Draws in from the left once. */
 @Composable
-fun AreaChart(values: List<Double>, color: Color, modifier: Modifier = Modifier, fill: Float = .32f, line: Float = .7f) {
+fun AreaChart(values: List<Double>, color: Color, modifier: Modifier = Modifier, fill: Float = .14f, line: Float = .32f, fadeStart: Float = .4f) {
     if (values.size < 2) return
     val reveal = remember(values.size) { Animatable(0f) }
     LaunchedEffect(values.size) { reveal.animateTo(1f, tween(900)) }
-    Canvas(modifier) {
+    Canvas(modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
         val min = values.min(); val max = values.max()
         val span = (max - min).takeIf { it > 0 } ?: 1.0
         val top = size.height * .12f
@@ -44,8 +47,10 @@ fun AreaChart(values: List<Double>, color: Color, modifier: Modifier = Modifier,
         val area = Path().apply { addPath(p); lineTo(size.width, size.height); lineTo(0f, size.height); close() }
         clipRect(right = size.width * reveal.value) {
             drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = fill), Color.Transparent)))
-            drawPath(p, color.copy(alpha = line), style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(p, color.copy(alpha = line), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
+        // horizontal fade: invisible on the left (where the amount sits), visible only on the right
+        drawRect(Brush.horizontalGradient(0f to Color.Transparent, fadeStart to Color.Transparent, 1f to Color.Black), blendMode = BlendMode.DstIn)
     }
 }
 
