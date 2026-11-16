@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.glance.LocalContext
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +44,16 @@ import ink.blavingad.hcb.MainActivity
 import ink.blavingad.hcb.R
 import ink.blavingad.hcb.container
 import ink.blavingad.hcb.data.Transaction
+import ink.blavingad.hcb.data.balanceByDate
+import ink.blavingad.hcb.ui.downsample
+import ink.blavingad.hcb.ui.sumSeries
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Shader
+import androidx.glance.layout.ContentScale
 import ink.blavingad.hcb.ui.money
 import ink.blavingad.hcb.ui.parseDate
 import ink.blavingad.hcb.ui.title
@@ -57,7 +68,7 @@ import kotlinx.coroutines.coroutineScope
 class BalanceWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 48.dp), DpSize(180.dp, 110.dp), DpSize(180.dp, 180.dp), DpSize(180.dp, 250.dp)))
 
-    private data class Snapshot(val signedIn: Boolean, val total: Long?, val missing: Int?, val txs: List<Transaction>, val hide: Boolean)
+    private data class Snapshot(val signedIn: Boolean, val total: Long?, val missing: Int?, val txs: List<Transaction>, val hide: Boolean, val series: List<Double> = emptyList())
 
     private suspend fun load(ctx: Context): Snapshot {
         val c = ctx.applicationContext.container
@@ -71,7 +82,10 @@ class BalanceWidget : GlanceAppWidget() {
                 // latest transactions across every org, newest first
                 val txs = orgs.map { o -> async { runCatching { c.api.orgTransactions(o.id, null, null, null).data.take(6).map { t -> if (t.organization == null) t.copy(organization = o) else t } }.getOrDefault(emptyList()) } }
                     .awaitAll().flatten().filter { !it.declined }.sortedByDescending { it.date ?: "" }.take(6)
-                Snapshot(true, bal.sumOf { it.second ?: 0L }, missing.await(), txs, hide)
+                val series = if (hide) emptyList() else runCatching {
+                    sumSeries(orgs.map { o -> async { runCatching { c.api.balanceByDate(o.id) }.getOrDefault(emptyList()) } }.awaitAll()).downsample(60)
+                }.getOrDefault(emptyList())
+                Snapshot(true, bal.sumOf { it.second ?: 0L }, missing.await(), txs, hide, series)
             }
         }.getOrElse { Snapshot(true, null, null, emptyList(), hide) }
     }
@@ -91,10 +105,22 @@ class BalanceWidget : GlanceAppWidget() {
             GlanceModifier.fillMaxSize().cornerRadius(28.dp).background(c.widgetBackground).clickable(actionStartActivity<MainActivity>()),
             contentAlignment = Alignment.BottomEnd,
         ) {
-            // decorative expressive shapes, anchored bottom-right (clipped by the rounded widget)
-            Image(ImageProvider(R.drawable.widget_shape_clover), null,
-                GlanceModifier.size(if (big) 150.dp else 90.dp).padding(start = 30.dp, top = 30.dp),
-                colorFilter = ColorFilter.tint(c.secondaryContainer))
+            val chart = remember(s.series, big) { if (s.series.size >= 2 && !s.hide) chartBitmap(s.series, if (big) 600 else 400, if (big) 220 else 120) else null }
+            if (chart != null) {
+                // continuous balance history, white alpha mask tinted with primary; faded on the left so the amount stays readable
+                Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+                    Image(ImageProvider(chart), null,
+                        GlanceModifier.fillMaxWidth().height(if (big) 110.dp else size.height).padding(top = if (big) 18.dp else 0.dp),
+                        contentScale = ContentScale.FillBounds, colorFilter = ColorFilter.tint(c.primary))
+                }
+            } else {
+                // no chart (hidden balances / no data): expressive shape in the empty top-right corner, away from the rows
+                Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+                    Image(ImageProvider(R.drawable.widget_shape_clover), null,
+                        GlanceModifier.size(if (big) 120.dp else 80.dp).padding(start = 24.dp, bottom = 24.dp),
+                        colorFilter = ColorFilter.tint(c.secondaryContainer))
+                }
+            }
             Column(GlanceModifier.fillMaxSize().padding(14.dp), verticalAlignment = if (big) Alignment.Top else Alignment.CenterVertically) {
                 Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Box(GlanceModifier.size(if (big) 36.dp else 30.dp), contentAlignment = Alignment.Center) {
@@ -139,18 +165,18 @@ class BalanceWidget : GlanceAppWidget() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val income = t.amount_cents > 0
         Row(
-            GlanceModifier.fillMaxWidth().cornerRadius(16.dp).background(c.surfaceVariant).padding(horizontal = 12.dp, vertical = 6.dp)
+            GlanceModifier.fillMaxWidth().cornerRadius(16.dp).background(c.secondaryContainer).padding(horizontal = 12.dp, vertical = 6.dp)
                 .clickable(androidx.glance.appwidget.action.actionStartActivity(open)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(GlanceModifier.defaultWeight()) {
-                Text(t.title(), style = TextStyle(color = c.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                Text(t.title(), style = TextStyle(color = c.onSecondaryContainer, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
                 val sub = listOfNotNull(shortDay(t.date), t.organization?.name, if (t.pending) "pending" else null).joinToString(" · ")
-                if (sub.isNotEmpty()) Text(sub, style = TextStyle(color = c.onSurfaceVariant, fontSize = 11.sp), maxLines = 1)
+                if (sub.isNotEmpty()) Text(sub, style = TextStyle(color = c.onSecondaryContainer, fontSize = 11.sp), maxLines = 1)
             }
             Spacer(GlanceModifier.width(8.dp))
             Text(if (hide) "••••" else money(t.amount_cents, signed = true),
-                style = TextStyle(color = if (income) c.primary else c.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                style = TextStyle(color = if (income) c.primary else c.onSecondaryContainer, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
         }
     }
 
@@ -172,6 +198,28 @@ class BalanceWidget : GlanceAppWidget() {
         ) {
             Text("$n receipt${if (n == 1) "" else "s"}", style = TextStyle(color = GlanceTheme.colors.onErrorContainer, fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
         }
+    }
+
+    /** Smooth area chart as an alpha mask (white), faded in from 40% width. Tinted by Glance. */
+    private fun chartBitmap(v: List<Double>, w: Int, h: Int): Bitmap {
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val cv = Canvas(bmp)
+        val min = v.min(); val max = v.max(); val span = (max - min).takeIf { it > 0 } ?: 1.0
+        val top = h * .12f; val usable = h * .80f
+        val pts = v.mapIndexed { i, x -> (i * w / (v.size - 1f)) to (top + usable * (1 - ((x - min) / span).toFloat())) }
+        val line = Path().apply {
+            moveTo(pts[0].first, pts[0].second)
+            for (i in 1 until pts.size) {
+                val (x0, y0) = pts[i - 1]; val (x1, y1) = pts[i]; val mx = (x0 + x1) / 2
+                cubicTo(mx, y0, mx, y1, x1, y1)
+            }
+        }
+        val area = Path(line).apply { lineTo(w.toFloat(), h.toFloat()); lineTo(0f, h.toFloat()); close() }
+        fun fade(a: Int) = LinearGradient(0f, 0f, w.toFloat(), 0f, intArrayOf(0x00FFFFFF, 0x00FFFFFF, (a shl 24) or 0xFFFFFF),
+            floatArrayOf(0f, .4f, 1f), Shader.TileMode.CLAMP)
+        cv.drawPath(area, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; shader = fade(0x30) })
+        cv.drawPath(line, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = h / 70f + 1.5f; strokeCap = Paint.Cap.ROUND; shader = fade(0x80) })
+        return bmp
     }
 
     companion object {
