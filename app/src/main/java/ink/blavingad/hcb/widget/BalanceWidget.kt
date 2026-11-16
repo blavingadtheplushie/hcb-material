@@ -23,7 +23,9 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
@@ -44,7 +46,7 @@ import kotlinx.coroutines.coroutineScope
 
 /** Home-screen widget (hcb-mobile#123): total balance across orgs + missing receipts. Material You via GlanceTheme. */
 class BalanceWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 48.dp), DpSize(180.dp, 110.dp)))
+    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 48.dp), DpSize(180.dp, 110.dp), DpSize(180.dp, 180.dp)))
 
     private data class Snapshot(val signedIn: Boolean, val total: Long?, val missing: Int?, val orgs: List<Pair<String, Long?>>, val hide: Boolean)
 
@@ -69,35 +71,67 @@ class BalanceWidget : GlanceAppWidget() {
 
     @Composable
     private fun Content(s: Snapshot) {
-        val big = LocalSize.current.height >= 100.dp
-        Column(
-            GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(GlanceTheme.colors.widgetBackground)
-                .padding(horizontal = 16.dp, vertical = 12.dp).clickable(actionStartActivity<MainActivity>()),
-            verticalAlignment = Alignment.CenterVertically,
+        val size = LocalSize.current
+        val big = size.height >= 100.dp
+        val c = GlanceTheme.colors
+        val amount = when { !s.signedIn -> "Sign in"; s.hide -> "••••"; s.total == null -> "…"; else -> money(s.total) }
+        Box(
+            GlanceModifier.fillMaxSize().cornerRadius(28.dp).background(c.widgetBackground).clickable(actionStartActivity<MainActivity>()),
+            contentAlignment = Alignment.BottomEnd,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(ImageProvider(R.drawable.ic_hcb_logo), null, GlanceModifier.size(16.dp), colorFilter = ColorFilter.tint(GlanceTheme.colors.primary))
-                Spacer(GlanceModifier.width(6.dp))
-                Text("HCB", style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium))
-            }
-            Spacer(GlanceModifier.height(2.dp))
-            Text(
-                when { !s.signedIn -> "Sign in"; s.hide -> "••••"; s.total == null -> "…"; else -> money(s.total) },
-                style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = if (big) 28.sp else 22.sp, fontWeight = FontWeight.Bold),
-                maxLines = 1,
-            )
-            s.missing?.takeIf { it > 0 }?.let { n ->
-                Text("$n missing receipt${if (n == 1) "" else "s"}", style = TextStyle(color = GlanceTheme.colors.error, fontSize = 12.sp, fontWeight = FontWeight.Medium), maxLines = 1)
-            }
-            if (big && !s.hide) {
-                Spacer(GlanceModifier.height(8.dp))
-                s.orgs.take(3).forEach { (name, cents) ->
-                    Row(GlanceModifier.padding(vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(name, GlanceModifier.defaultWeight(), style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp), maxLines = 1)
-                        Text(money(cents), style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+            // decorative expressive shapes, anchored bottom-right (clipped by the rounded widget)
+            Image(ImageProvider(R.drawable.widget_shape_clover), null,
+                GlanceModifier.size(if (big) 150.dp else 90.dp).padding(start = 30.dp, top = 30.dp),
+                colorFilter = ColorFilter.tint(c.secondaryContainer))
+            Column(GlanceModifier.fillMaxSize().padding(14.dp), verticalAlignment = if (big) Alignment.Top else Alignment.CenterVertically) {
+                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(GlanceModifier.size(if (big) 36.dp else 30.dp), contentAlignment = Alignment.Center) {
+                        Image(ImageProvider(R.drawable.widget_shape_cookie), null, GlanceModifier.fillMaxSize(), colorFilter = ColorFilter.tint(c.primary))
+                        Image(ImageProvider(R.drawable.ic_hcb_logo), null, GlanceModifier.size(if (big) 18.dp else 15.dp), colorFilter = ColorFilter.tint(c.onPrimary))
+                    }
+                    Spacer(GlanceModifier.width(10.dp))
+                    if (big) {
+                        Text("HCB", GlanceModifier.defaultWeight(), style = TextStyle(color = c.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                        s.missing?.takeIf { it > 0 }?.let { n -> MissingChip(n) }
+                    } else {
+                        Column(GlanceModifier.defaultWeight()) {
+                            Text(amount, style = TextStyle(color = c.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                            s.missing?.takeIf { it > 0 }?.let { n ->
+                                Text("$n missing receipt${if (n == 1) "" else "s"}", style = TextStyle(color = c.error, fontSize = 11.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                            }
+                        }
+                    }
+                }
+                if (big) {
+                    Spacer(GlanceModifier.height(6.dp))
+                    Text(amount, style = TextStyle(color = c.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                    Spacer(GlanceModifier.defaultWeight())
+                    if (!s.hide) {
+                        val rows = s.orgs.take(if (size.height >= 170.dp) 3 else 1)
+                        rows.forEachIndexed { i, (name, cents) ->
+                            if (i > 0) Spacer(GlanceModifier.height(4.dp))
+                            Row(
+                                GlanceModifier.fillMaxWidth().cornerRadius(16.dp).background(c.surfaceVariant).padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(name, GlanceModifier.defaultWeight(), style = TextStyle(color = c.onSurfaceVariant, fontSize = 13.sp), maxLines = 1)
+                                Spacer(GlanceModifier.width(8.dp))
+                                Text(money(cents), style = TextStyle(color = c.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    private fun MissingChip(n: Int) {
+        Row(
+            GlanceModifier.cornerRadius(12.dp).background(GlanceTheme.colors.errorContainer).padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("$n receipt${if (n == 1) "" else "s"}", style = TextStyle(color = GlanceTheme.colors.onErrorContainer, fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
         }
     }
 
