@@ -112,10 +112,7 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
                             selected = route == t.route,
                             onClick = {
                                 if (route != t.route) haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                                nav.navigate(t.route) {
-                                    popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true; restoreState = true
-                                }
+                                nav.navigateTab(t.route)
                             },
                             icon = { Icon(if (route == t.route) t.selected else t.icon, null) },
                             label = { Text(t.label) },
@@ -145,5 +142,18 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
                 composable("invite/{id}") { CardFrame { InvitationScreen(it.arguments?.getString("id")!!) } }
             }
         }
+    }
+}
+
+/** Switch bottom-nav tab. Home is the start destination: pop back to it instead of restoring a saved stack (which could contain a tab pushed on top of home, e.g. from a bento tile). */
+fun androidx.navigation.NavController.navigateTab(route: String) {
+    val start = graph.findStartDestination()
+    if (route == start.route) {
+        if (!popBackStack(start.id, inclusive = false)) navigate(route) { launchSingleTop = true }
+        return
+    }
+    navigate(route) {
+        popUpTo(start.id) { saveState = true }
+        launchSingleTop = true; restoreState = true
     }
 }

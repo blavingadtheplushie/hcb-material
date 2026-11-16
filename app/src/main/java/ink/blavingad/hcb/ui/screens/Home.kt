@@ -1,5 +1,6 @@
 package ink.blavingad.hcb.ui.screens
 
+import ink.blavingad.hcb.ui.navigateTab
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -90,10 +91,7 @@ fun HomeScreen() {
                 actions = {
                     user.data?.let { u ->
                         androidx.compose.material3.IconButton({
-                            nav.navigate("settings") {
-                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true; restoreState = true
-                            }
+                            nav.navigateTab("settings")
                         }, Modifier.padding(end = 8.dp_())) { Avatar(u.avatar, u.name, size = 36.dp_()) }
                     }
                 },
@@ -123,7 +121,7 @@ fun HomeScreen() {
                                 (1..today.dayOfMonth).map { d -> val day = today.withDayOfMonth(d).toString()
                                     r.filter { it.date?.startsWith(day) == true && it.amount_cents < 0 && !it.declined }.sumOf { -it.amount_cents }.toDouble() }
                             }.orEmpty(),
-                            onReceipts = { nav.navigate("receipts") }, onCards = { nav.navigate("cards") },
+                            onReceipts = { nav.navigateTab("receipts") }, onCards = { nav.navigateTab("cards") },
                             onLast = { recent.data?.firstOrNull()?.let { t -> nav.navigate("tx/${t.organization?.id}/${t.id}") } },
                         )
                     }

@@ -33,10 +33,7 @@ fun CardLockBanner(lock: CardLocking?, modifier: Modifier = Modifier) {
     val n = lock.overdue_receipt_count
     Surface(
         onClick = {
-            nav.navigate("receipts") {
-                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                launchSingleTop = true; restoreState = true
-            }
+            nav.navigateTab("receipts")
         },
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.errorContainer,
