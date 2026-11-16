@@ -140,7 +140,7 @@ class BalanceWidget : GlanceAppWidget() {
         val income = t.amount_cents > 0
         Row(
             GlanceModifier.fillMaxWidth().cornerRadius(16.dp).background(c.surfaceVariant).padding(horizontal = 12.dp, vertical = 6.dp)
-                .clickable(actionStartActivity(open)),
+                .clickable(androidx.glance.appwidget.action.actionStartActivity(open)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(GlanceModifier.defaultWeight()) {
