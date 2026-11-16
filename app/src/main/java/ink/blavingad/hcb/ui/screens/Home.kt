@@ -34,6 +34,7 @@ import ink.blavingad.hcb.container
 import ink.blavingad.hcb.ui.Avatar
 import ink.blavingad.hcb.ui.BentoGrid
 import ink.blavingad.hcb.data.balanceByDate
+import ink.blavingad.hcb.ui.downsample
 import ink.blavingad.hcb.ui.CenterLoading
 import ink.blavingad.hcb.ui.EmptyState
 import ink.blavingad.hcb.ui.ErrorState
