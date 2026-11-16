@@ -277,6 +277,17 @@ private fun ConvertedAmount(t: Transaction) {
         t.card_charge?.spent_at?.let { runCatching { java.time.OffsetDateTime.parse(it).toLocalDate() }.getOrNull() } ?: parseDate(t.date) ?: java.time.LocalDate.now()
     }
     val card = t.card_charge != null
+    // Card paid in a foreign currency: show exactly what the merchant charged (no conversion guess).
+    val mc = t.card_charge?.merchant_currency?.uppercase()
+    val ma = t.card_charge?.merchant_amount_cents
+    if (mc != null && ma != null && mc != "USD") {
+        val f = remember(mc) { java.text.NumberFormat.getCurrencyInstance().apply { currency = java.util.Currency.getInstance(mc) } }
+        val v = kotlin.math.abs(ma) / 100.0
+        val txt = if (hide) "••••" else (if (t.amount_cents < 0) "−" else "") + f.format(v)
+        Text("$txt · charged by merchant", style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        return
+    }
     var rate by remember(t.id, to) { mutableStateOf<ink.blavingad.hcb.data.Fx.Rate?>(null) }
     LaunchedEffect(t.id, to, day) { rate = c.fx.rate(to, day, card) }
     val r = rate ?: return

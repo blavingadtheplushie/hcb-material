@@ -40,7 +40,7 @@ data class Tag(val id: String = "", val label: String = "", val color: String? =
 data class Merchant(val name: String? = null, val smart_name: String? = null, val country: String? = null)
 
 @Serializable
-data class CardCharge(val merchant: Merchant? = null, val spent_at: String? = null, val card: Card? = null, val decline_reason: String? = null, val wallet: String? = null)
+data class CardCharge(val merchant: Merchant? = null, val spent_at: String? = null, val card: Card? = null, val decline_reason: String? = null, val wallet: String? = null, val merchant_amount_cents: Long? = null, val merchant_currency: String? = null)
 
 @Serializable
 data class Donor(val name: String? = null, val email: String? = null)
