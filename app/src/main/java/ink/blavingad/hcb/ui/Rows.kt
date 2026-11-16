@@ -111,11 +111,13 @@ fun CardArt(card: Card, modifier: Modifier = Modifier, grant: ink.blavingad.hcb.
     val dim = frozen || inactive
     val physical = card.type == "physical"
     val seed = (card.id.hashCode() and 0x7fffffff)
-    // dark theme: keep cards dark (no big bright slab / white cookie), the shape is only a soft tint of primary
+    // dark theme: keep cards dark (no big bright slab). Light theme: if primaryContainer is far from the surface
+    // (monochrome / black & white themes make it near-black), use a light surface card with a tinted cookie instead.
     val dark = cs.surface.lum() < .5f
-    val bg = when { physical -> cs.surface; dark && dim -> cs.surfaceContainerLow; dark -> cs.surfaceContainerHigh; dim -> cs.surfaceContainerHigh; else -> cs.primaryContainer }
-    val fg = when { dim -> cs.onSurfaceVariant; physical || dark -> cs.onSurface; else -> cs.onPrimaryContainer }
-    val shapeColor = if (dark) androidx.compose.ui.graphics.lerp(bg, cs.primary, .28f) else cs.primary
+    val soft = dark || kotlin.math.abs(cs.primaryContainer.lum() - cs.surface.lum()) > .45f
+    val bg = when { physical -> cs.surface; dim && dark -> cs.surfaceContainerLow; dim || soft -> cs.surfaceContainerHigh; else -> cs.primaryContainer }
+    val fg = when { dim -> cs.onSurfaceVariant; physical || soft -> cs.onSurface; else -> cs.onPrimaryContainer }
+    val shapeColor = if (soft) androidx.compose.ui.graphics.lerp(bg, cs.primary, if (dark) .28f else .16f) else cs.primary
     val dimLine = if (dark) cs.outlineVariant else cs.outline
     val cardShape = RoundedCornerShape(24.dp)
     Box(modifier.fillMaxWidth().aspectRatio(1.586f).clip(cardShape).background(bg)
