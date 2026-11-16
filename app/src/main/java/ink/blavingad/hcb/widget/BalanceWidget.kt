@@ -105,12 +105,12 @@ class BalanceWidget : GlanceAppWidget() {
             GlanceModifier.fillMaxSize().cornerRadius(28.dp).background(c.widgetBackground).clickable(actionStartActivity<MainActivity>()),
             contentAlignment = Alignment.BottomEnd,
         ) {
-            val chart = remember(s.series, big) { if (s.series.size >= 2 && !s.hide) chartBitmap(s.series, if (big) 600 else 400, if (big) 220 else 120) else null }
+            val chart = remember(s.series, big) { if (s.series.size >= 2 && !s.hide) chartBitmap(s.series, if (big) 600 else 400, if (big) 280 else 120) else null }
             if (chart != null) {
                 // continuous balance history, white alpha mask tinted with primary; faded on the left so the amount stays readable
                 Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
                     Image(ImageProvider(chart), null,
-                        GlanceModifier.fillMaxWidth().height(if (big) 110.dp else size.height).padding(top = if (big) 18.dp else 0.dp),
+                        GlanceModifier.fillMaxWidth().height(if (big) 140.dp else size.height).padding(top = if (big) 14.dp else 0.dp),
                         contentScale = ContentScale.FillBounds, colorFilter = ColorFilter.tint(c.primary))
                 }
             } else {
@@ -215,10 +215,19 @@ class BalanceWidget : GlanceAppWidget() {
             }
         }
         val area = Path(line).apply { lineTo(w.toFloat(), h.toFloat()); lineTo(0f, h.toFloat()); close() }
-        fun fade(a: Int) = LinearGradient(0f, 0f, w.toFloat(), 0f, intArrayOf(0x00FFFFFF, 0x00FFFFFF, (a shl 24) or 0xFFFFFF),
-            floatArrayOf(0f, .4f, 1f), Shader.TileMode.CLAMP)
-        cv.drawPath(area, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; shader = fade(0x30) })
-        cv.drawPath(line, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = h / 70f + 1.5f; strokeCap = Paint.Cap.ROUND; shader = fade(0x80) })
+        // fill fades out vertically (no hard bottom edge), line stays crisp
+        cv.drawPath(area, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            shader = LinearGradient(0f, top, 0f, h.toFloat(), intArrayOf(0x38FFFFFF, 0x14FFFFFF, 0x00FFFFFF), floatArrayOf(0f, .55f, 1f), Shader.TileMode.CLAMP)
+        })
+        cv.drawPath(line, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = h / 70f + 1.5f; strokeCap = Paint.Cap.ROUND; color = 0x80FFFFFF.toInt() })
+        // horizontal mask: smooth ease-in from the left (amount stays readable), soft on the right edge too
+        cv.drawRect(0f, 0f, w.toFloat(), h.toFloat(), Paint().apply {
+            xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
+            shader = LinearGradient(0f, 0f, w.toFloat(), 0f,
+                intArrayOf(0x00FFFFFF, 0x00FFFFFF, 0x26FFFFFF, 0x99FFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0xB3FFFFFF.toInt()),
+                floatArrayOf(0f, .3f, .45f, .62f, .8f, 1f), Shader.TileMode.CLAMP)
+        })
         return bmp
     }
 
