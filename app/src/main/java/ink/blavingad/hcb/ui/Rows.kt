@@ -1,6 +1,9 @@
 package ink.blavingad.hcb.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +47,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ink.blavingad.hcb.data.Card
+import ink.blavingad.hcb.container
 import ink.blavingad.hcb.data.Transaction
 
 fun Transaction.icon() = when {
@@ -91,34 +95,76 @@ fun TxRow(t: Transaction, index: Int, count: Int, showOrg: Boolean = false, onCl
     }
 }
 
-/** Card art: flat tonal colour + a big expressive shape in the background. No gradients. */
+/** Card art. Flat colours only, no gradients.
+ *  Virtual cards: style A "cookie" (big cropped shape, picked from the card id) or B "collage" (several shapes).
+ *  Physical cards: style C "minimal" (surface + primary outline + small flower). Frozen/inactive: grey, shape as outline. */
+private val cookieShapes = listOf(MaterialShapes.Cookie9Sided, MaterialShapes.Cookie12Sided, MaterialShapes.Cookie7Sided, MaterialShapes.Sunny,
+    MaterialShapes.SoftBurst, MaterialShapes.Flower, MaterialShapes.Clover8Leaf, MaterialShapes.Cookie6Sided)
+
+private fun Color.lum() = 0.2126f * red + 0.7152f * green + 0.0722f * blue
+/** Keep a shape colour visible on bg: if both are too close (monochrome themes), push it towards ink. */
+private fun visible(c: Color, bg: Color, ink: Color, min: Float = .16f): Color =
+    if (kotlin.math.abs(c.lum() - bg.lum()) >= min) c
+    else Color(bg.red + (ink.red - bg.red) * .45f, bg.green + (ink.green - bg.green) * .45f, bg.blue + (ink.blue - bg.blue) * .45f, 1f)
+
 @Composable
 fun CardArt(card: Card, modifier: Modifier = Modifier, grant: ink.blavingad.hcb.data.CardGrant? = null, showOwner: Boolean = false) {
     val cs = MaterialTheme.colorScheme
+    val style by androidx.compose.ui.platform.LocalContext.current.container.prefs.cardStyle.collectAsStateWithLifecycle()
     val frozen = card.status == "frozen"
     val inactive = card.status != "active" && !frozen
+    val dim = frozen || inactive
     val physical = card.type == "physical"
-    val bg = when { frozen -> cs.surfaceContainerHighest; inactive -> cs.surfaceContainerHigh; physical -> cs.primary; else -> cs.primaryContainer }
-    val fg = when { frozen || inactive -> cs.onSurfaceVariant; physical -> cs.onPrimary; else -> cs.onPrimaryContainer }
-    val shape = when { grant != null -> MaterialShapes.Flower; physical -> MaterialShapes.Cookie9Sided; frozen -> MaterialShapes.SoftBurst; else -> MaterialShapes.Sunny }
-    Box(modifier.fillMaxWidth().aspectRatio(1.586f).clip(RoundedCornerShape(24.dp)).background(bg)) {
-        BgShape(shape, fg.copy(alpha = .09f), Modifier.align(Alignment.CenterEnd).offset(x = 70.dp, y = 30.dp).size(240.dp))
+    val seed = (card.id.hashCode() and 0x7fffffff)
+    val collage = !physical && style == "collage"
+    val bg = when { dim -> cs.surfaceContainerHigh; physical -> cs.surface; collage -> cs.surfaceContainerHigh; else -> cs.primaryContainer }
+    val fg = when { dim -> cs.onSurfaceVariant; physical || collage -> cs.onSurface; else -> cs.onPrimaryContainer }
+    val cardShape = RoundedCornerShape(24.dp)
+    Box(modifier.fillMaxWidth().aspectRatio(1.586f).clip(cardShape).background(bg)
+        .then(if (physical) Modifier.border(2.dp, if (dim) cs.outline else cs.primary, cardShape) else Modifier)) {
+        when {
+            physical -> {
+                val m = Modifier.align(Alignment.TopEnd).padding(18.dp).size(34.dp)
+                if (dim) Box(m.border(2.dp, cs.outline, MaterialShapes.Flower.toShape())) else Box(m.clip(MaterialShapes.Flower.toShape()).background(cs.primary))
+            }
+            collage -> {
+                val ink = cs.onSurface
+                val c1 = if (dim) cs.outline else visible(cs.primary, bg, ink)
+                val c2 = if (dim) cs.outlineVariant else visible(cs.tertiary, bg, ink)
+                val c3 = if (dim) cs.outline else visible(cs.secondaryContainer, bg, ink)
+                val c4 = if (dim) cs.outlineVariant else visible(cs.inversePrimary, bg, ink)
+                fun Modifier.fillOrLine(sh: androidx.compose.ui.graphics.Shape, c: Color) = if (dim) border(2.dp, c, sh) else clip(sh).background(c)
+                val pill = RoundedCornerShape(50)
+                // tall pill, flower, circle, triangle, kept on the right so the text stays readable
+                Box(Modifier.align(Alignment.TopEnd).offset(x = (-78).dp, y = (-28).dp).size(width = 56.dp, height = 130.dp).rotate(-14f).fillOrLine(pill, c1))
+                Box(Modifier.align(Alignment.TopEnd).offset(x = (-10).dp, y = 22.dp).size(70.dp).rotate(seed % 40f).fillOrLine(MaterialShapes.Flower.toShape(), c2))
+                Box(Modifier.align(Alignment.BottomEnd).offset(x = 24.dp, y = 24.dp).size(104.dp).fillOrLine(androidx.compose.foundation.shape.CircleShape, c3))
+                Box(Modifier.align(Alignment.BottomEnd).offset(x = (-96).dp, y = 10.dp).size(64.dp).rotate(-8f).fillOrLine(MaterialShapes.Triangle.toShape(), c4))
+            }
+            else -> {
+                val sh = cookieShapes[seed % cookieShapes.size]
+                val m = Modifier.align(Alignment.BottomEnd).offset(x = 64.dp, y = 76.dp).size(230.dp).rotate((seed / 8 % 60).toFloat())
+                if (dim) Box(m.border(3.dp, cs.outline, sh.toShape())) else Box(m.clip(sh.toShape()).background(cs.primary))
+            }
+        }
         Box(Modifier.fillMaxSize().padding(20.dp)) {
             Column(Modifier.align(Alignment.TopStart).padding(end = 72.dp)) {
                 Text(card.organization?.name ?: "HCB", color = fg, style = MaterialTheme.typography.titleMediumEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 card.name?.takeIf { it.isNotBlank() }?.let { Text(it, color = fg.copy(alpha = .8f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
-            Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (frozen) Icon(Icons.Outlined.AcUnit, "Frozen", tint = fg)
+            Row(Modifier.align(Alignment.TopEnd).padding(end = if (physical) 44.dp else 0.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (frozen) Surface(color = cs.surfaceContainerHighest, contentColor = cs.onSurface, shape = RoundedCornerShape(50)) { Icon(Icons.Outlined.AcUnit, "Frozen", Modifier.padding(4.dp).size(18.dp)) }
                 if (grant != null) Surface(color = cs.tertiaryContainer, contentColor = cs.onTertiaryContainer, shape = RoundedCornerShape(50)) {
                     Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.CardGiftcard, null, Modifier.size(16.dp))
                         Text(" Grant" + (grant.balance_cents?.let { " · " + money(it) } ?: ""), style = MaterialTheme.typography.labelMedium)
                     }
                 }
-                if (physical) Icon(Icons.Outlined.Contactless, "Physical card", tint = fg)
             }
-            if (physical) Box(Modifier.align(Alignment.CenterStart).size(width = 40.dp, height = 30.dp).clip(RoundedCornerShape(6.dp)).background(fg.copy(alpha = .28f)))
+            if (physical) Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.size(width = 40.dp, height = 30.dp).clip(RoundedCornerShape(6.dp)).background(if (dim) cs.outlineVariant else cs.primary.copy(alpha = .85f)))
+                Icon(Icons.Outlined.Contactless, "Physical card", tint = fg.copy(alpha = .7f))
+            }
             Column(Modifier.align(Alignment.BottomStart)) {
                 Text("•••• " + (card.last4 ?: "····"), color = fg, style = MaterialTheme.typography.headlineSmallEmphasized, fontFamily = FontFamily.Monospace)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -127,7 +173,9 @@ fun CardArt(card: Card, modifier: Modifier = Modifier, grant: ink.blavingad.hcb.
                         Text("%02d/%02d".format(card.exp_month, card.exp_year % 100), color = fg.copy(alpha = .8f), style = MaterialTheme.typography.labelLarge)
                 }
             }
-            if (card.status != "active") Text(card.status.replaceFirstChar { it.uppercase() }, color = fg, style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.BottomEnd))
+            if (card.status != "active") Surface(color = cs.surfaceContainerHighest, contentColor = cs.onSurface, shape = RoundedCornerShape(50), modifier = Modifier.align(Alignment.BottomEnd)) {
+                Text(card.status.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+            }
         }
     }
 }

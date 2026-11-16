@@ -22,6 +22,8 @@ class Prefs(context: Context) {
     val notifyEvery = MutableStateFlow(p.getInt("notifyEvery", 15))
     /** currency to show converted amounts in ("" = off) */
     val convertTo = MutableStateFlow(p.getString("convertTo", "EUR") ?: "EUR")
+    /** virtual card art: "cookie" (A) or "collage" (B); physical cards always use the minimal outline style */
+    val cardStyle = MutableStateFlow(p.getString("cardStyle", "cookie") ?: "cookie")
     var lastSeenTx: String?
         get() = p.getString("lastTx", null)
         set(v) { p.edit { putString("lastTx", v) } }
@@ -35,5 +37,6 @@ class Prefs(context: Context) {
     fun setNotifyIncome(v: Boolean) { notifyIncome.value = v; p.edit { putBoolean("notifyIncome", v) } }
     fun setRelockAfter(v: Int) { relockAfter.value = v; p.edit { putInt("relock", v) } }
     fun setConvertTo(v: String) { convertTo.value = v; p.edit { putString("convertTo", v) } }
+    fun setCardStyle(v: String) { cardStyle.value = v; p.edit { putString("cardStyle", v) } }
     fun setNotifyEvery(v: Int) { notifyEvery.value = v; p.edit { putInt("notifyEvery", v) } }
 }

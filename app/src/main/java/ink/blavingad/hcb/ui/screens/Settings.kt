@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -126,6 +127,22 @@ fun SettingsScreen() {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Storefront, null) },
                         headlineContent = { Text("Merchant logos") }, supportingContent = { Text("Brand icons on card charges (Simple Icons)") },
                         trailingContent = { Switch(logos, { c.prefs.setLogos(it) }) })
+                }
+            }
+            item {
+                val cardStyle by c.prefs.cardStyle.collectAsStateWithLifecycle()
+                Spacer(Modifier.height(8.dp))
+                SegmentedItem(0, 1, { c.prefs.setCardStyle(if (cardStyle == "collage") "cookie" else "collage") }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.CreditCard, null) },
+                        headlineContent = { Text("Card design") },
+                        supportingContent = { Text((if (cardStyle == "collage") "Collage" else "Cookie") + " for virtual cards · physical cards keep the outline design") },
+                        trailingContent = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+                                listOf("cookie" to "Cookie", "collage" to "Collage").forEach { (k, l) ->
+                                    ToggleButton(cardStyle == k, { c.prefs.setCardStyle(k) }) { Text(l) }
+                                }
+                            }
+                        })
                 }
             }
             item {
