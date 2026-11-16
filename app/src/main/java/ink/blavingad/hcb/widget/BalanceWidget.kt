@@ -1,6 +1,9 @@
 package ink.blavingad.hcb.widget
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.glance.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -39,16 +42,22 @@ import androidx.glance.text.TextStyle
 import ink.blavingad.hcb.MainActivity
 import ink.blavingad.hcb.R
 import ink.blavingad.hcb.container
+import ink.blavingad.hcb.data.Transaction
 import ink.blavingad.hcb.ui.money
+import ink.blavingad.hcb.ui.parseDate
+import ink.blavingad.hcb.ui.title
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 /** Home-screen widget (hcb-mobile#123): total balance across orgs + missing receipts. Material You via GlanceTheme. */
 class BalanceWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 48.dp), DpSize(180.dp, 110.dp), DpSize(180.dp, 180.dp)))
+    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 48.dp), DpSize(180.dp, 110.dp), DpSize(180.dp, 180.dp), DpSize(180.dp, 250.dp)))
 
-    private data class Snapshot(val signedIn: Boolean, val total: Long?, val missing: Int?, val orgs: List<Pair<String, Long?>>, val hide: Boolean)
+    private data class Snapshot(val signedIn: Boolean, val total: Long?, val missing: Int?, val txs: List<Transaction>, val hide: Boolean)
 
     private suspend fun load(ctx: Context): Snapshot {
         val c = ctx.applicationContext.container
@@ -59,7 +68,10 @@ class BalanceWidget : GlanceAppWidget() {
                 val orgs = c.api.organizations()
                 val missing = async { runCatching { c.api.missingReceiptCount() }.getOrNull() }
                 val bal = orgs.map { o -> async { o.name to runCatching { c.api.orgBalance(o.id).balance_cents }.getOrNull() } }.awaitAll()
-                Snapshot(true, bal.sumOf { it.second ?: 0L }, missing.await(), bal.sortedByDescending { it.second ?: 0L }, hide)
+                // latest transactions across every org, newest first
+                val txs = orgs.map { o -> async { runCatching { c.api.orgTransactions(o.id, null, null, null).data.take(6).map { t -> if (t.organization == null) t.copy(organization = o) else t } }.getOrDefault(emptyList()) } }
+                    .awaitAll().flatten().filter { !it.declined }.sortedByDescending { it.date ?: "" }.take(6)
+                Snapshot(true, bal.sumOf { it.second ?: 0L }, missing.await(), txs, hide)
             }
         }.getOrElse { Snapshot(true, null, null, emptyList(), hide) }
     }
@@ -106,22 +118,49 @@ class BalanceWidget : GlanceAppWidget() {
                     Spacer(GlanceModifier.height(6.dp))
                     Text(amount, style = TextStyle(color = c.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                     Spacer(GlanceModifier.defaultWeight())
-                    if (!s.hide) {
-                        val rows = s.orgs.take(if (size.height >= 170.dp) 3 else 1)
-                        rows.forEachIndexed { i, (name, cents) ->
-                            if (i > 0) Spacer(GlanceModifier.height(4.dp))
-                            Row(
-                                GlanceModifier.fillMaxWidth().cornerRadius(16.dp).background(c.surfaceVariant).padding(horizontal = 12.dp, vertical = 7.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(name, GlanceModifier.defaultWeight(), style = TextStyle(color = c.onSurfaceVariant, fontSize = 13.sp), maxLines = 1)
-                                Spacer(GlanceModifier.width(8.dp))
-                                Text(money(cents), style = TextStyle(color = c.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-                            }
-                        }
+                    val rows = s.txs.take(when { size.height >= 240.dp -> 5; size.height >= 170.dp -> 3; else -> 1 })
+                    if (rows.isEmpty() && s.signedIn) {
+                        Text("No transactions yet", style = TextStyle(color = c.onSurfaceVariant, fontSize = 12.sp), maxLines = 1)
+                    }
+                    rows.forEachIndexed { i, t ->
+                        if (i > 0) Spacer(GlanceModifier.height(4.dp))
+                        TxRow(t, s.hide)
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    private fun TxRow(t: Transaction, hide: Boolean) {
+        val c = GlanceTheme.colors
+        val ctx = LocalContext.current
+        val open = Intent(Intent.ACTION_VIEW, Uri.parse("https://hcb.hackclub.com/hcb/${t.id.removePrefix("txn_")}"), ctx, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val income = t.amount_cents > 0
+        Row(
+            GlanceModifier.fillMaxWidth().cornerRadius(16.dp).background(c.surfaceVariant).padding(horizontal = 12.dp, vertical = 6.dp)
+                .clickable(actionStartActivity(open)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(GlanceModifier.defaultWeight()) {
+                Text(t.title(), style = TextStyle(color = c.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                val sub = listOfNotNull(shortDay(t.date), t.organization?.name, if (t.pending) "pending" else null).joinToString(" · ")
+                if (sub.isNotEmpty()) Text(sub, style = TextStyle(color = c.onSurfaceVariant, fontSize = 11.sp), maxLines = 1)
+            }
+            Spacer(GlanceModifier.width(8.dp))
+            Text(if (hide) "••••" else money(t.amount_cents, signed = true),
+                style = TextStyle(color = if (income) c.primary else c.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+        }
+    }
+
+    private fun shortDay(s: String?): String? {
+        val d = parseDate(s) ?: return null
+        val today = LocalDate.now()
+        return when (d) {
+            today -> "Today"
+            today.minusDays(1) -> "Yesterday"
+            else -> d.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
         }
     }
 
