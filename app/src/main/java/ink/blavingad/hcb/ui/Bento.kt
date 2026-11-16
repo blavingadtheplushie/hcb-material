@@ -37,10 +37,12 @@ import ink.blavingad.hcb.data.Transaction
 private fun Tile(
     modifier: Modifier, height: Dp, bg: Color, fg: Color, shape: RoundedPolygon, icon: ImageVector,
     label: String, value: String, sub: String? = null, big: Boolean = false, onClick: (() -> Unit)? = null,
+    chart: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
 ) {
     val content: @Composable () -> Unit = {
         Box(Modifier.height(height).clip(RoundedCornerShape(28.dp)).background(bg)) {
-            BgShape(shape, fg.copy(alpha = .08f), Modifier.align(Alignment.BottomEnd).offset(x = 40.dp, y = 40.dp).size(if (big) 220.dp else 140.dp))
+            BgShape(shape, fg.copy(alpha = if (chart != null) .05f else .08f), Modifier.align(Alignment.BottomEnd).offset(x = 40.dp, y = 40.dp).size(if (big) 220.dp else 140.dp))
+            chart?.invoke(this)
             Column(Modifier.padding(18.dp).fillMaxWidth(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(icon, null, Modifier.size(18.dp), tint = fg)
@@ -60,13 +62,17 @@ private fun Tile(
 @Composable
 fun BentoGrid(
     total: Long?, orgCount: Int, missing: Int, activeCards: Int?, spentMonth: Long?, last: Transaction?, hide: Boolean,
+    balanceSeries: List<Double> = emptyList(), dailySpend: List<Double> = emptyList(),
     onReceipts: () -> Unit, onCards: () -> Unit, onLast: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     fun m(v: Long?) = if (hide) "••••" else if (v == null) "…" else money(v)
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Tile(Modifier.fillMaxWidth(), 150.dp, cs.primaryContainer, cs.onPrimaryContainer, MaterialShapes.Cookie12Sided,
-            Icons.Outlined.AccountBalanceWallet, "Total balance", m(total), if (orgCount == 1) "across 1 organization" else "across $orgCount organizations", big = true)
+            Icons.Outlined.AccountBalanceWallet, "Total balance", m(total), if (orgCount == 1) "across 1 organization" else "across $orgCount organizations", big = true,
+            chart = if (balanceSeries.size > 1 && !hide) ({
+                AreaChart(balanceSeries, cs.onPrimaryContainer, Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(96.dp))
+            }) else null)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Tile(Modifier.weight(1f), 120.dp, if (missing > 0) cs.errorContainer else cs.surfaceContainerHigh, if (missing > 0) cs.onErrorContainer else cs.onSurface,
                 MaterialShapes.Sunny, Icons.Outlined.ReceiptLong, "Receipts", if (missing == 0) "All done" else "$missing missing", onClick = onReceipts)
@@ -75,7 +81,10 @@ fun BentoGrid(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Tile(Modifier.weight(1f), 120.dp, cs.tertiaryContainer, cs.onTertiaryContainer, MaterialShapes.Flower,
-                Icons.Outlined.TrendingDown, "Spent this month", m(spentMonth))
+                Icons.Outlined.TrendingDown, "Spent this month", m(spentMonth),
+                chart = if (dailySpend.any { it > 0 } && !hide) ({
+                    BarsChart(dailySpend, cs.onTertiaryContainer, Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(56.dp).padding(horizontal = 14.dp, vertical = 10.dp))
+                }) else null)
             Tile(Modifier.weight(1f), 120.dp, cs.surfaceContainerHighest, cs.onSurface, MaterialShapes.SoftBurst,
                 Icons.Outlined.CreditCard, "Latest", if (last == null) "…" else if (hide) "••••" else money(last.amount_cents, signed = true),
                 last?.title(), onClick = if (last != null) onLast else null)

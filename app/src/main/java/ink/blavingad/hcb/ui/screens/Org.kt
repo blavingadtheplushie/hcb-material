@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -63,6 +64,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ink.blavingad.hcb.container
 import ink.blavingad.hcb.data.Transaction
+import ink.blavingad.hcb.data.balanceByDate
+import ink.blavingad.hcb.ui.MoneyActions
+import ink.blavingad.hcb.ui.series
 import ink.blavingad.hcb.ui.Avatar
 import ink.blavingad.hcb.ui.CardArt
 import ink.blavingad.hcb.ui.CenterLoading
@@ -103,6 +107,7 @@ fun OrgScreen(id: String) {
     val cards = rememberLoadable(id, tab == 1) { if (tab == 1) c.api.orgCards(id) else null }
     // v4 has no description: borrow the public message from v3 when the org is transparent
     val desc = rememberLoadable("desc", id, org.data?.transparent == true) { org.data?.takeIf { it.transparent == true }?.let { runCatching { c.public.org(it.slug).public_message }.getOrNull() } }
+    val history = rememberLoadable("bal", id) { runCatching { c.api.balanceByDate(id) }.getOrDefault(emptyList()) }
     val list = rememberLazyListState()
     InfiniteLoader(list, txs)
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -141,7 +146,8 @@ fun OrgScreen(id: String) {
         RefreshBox(txs.loading && txs.items != null || org.loading, { scope.launch { org.load(); if (tab == 0) txs.refresh() else if (tab == 1) cards.load() } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
                 item {
-                    BalanceHero(if (hide) null else o.balance_cents, o.fee_balance_cents)
+                    BalanceHero(if (hide) null else o.balance_cents, o.fee_balance_cents, history.data?.series().orEmpty())
+                    MoneyActions(o.id, o.name, onMoved = { scope.launch { org.load(); txs.refresh() } })
                     desc.data?.takeIf { it.isNotBlank() }?.let { msg ->
                         ink.blavingad.hcb.ui.Markdown(msg, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { url -> if (ink.blavingad.hcb.ui.isHcbLink(android.net.Uri.parse(url))) c.deepLink.value = url else ctx.openUrl(url) }
                     }
@@ -198,12 +204,14 @@ fun OrgScreen(id: String) {
 }
 
 @Composable
-fun BalanceHero(balance: Long?, fees: Long?) {
+fun BalanceHero(balance: Long?, fees: Long?, series: List<Double> = emptyList()) {
     val cs = MaterialTheme.colorScheme
     Surface(color = cs.primaryContainer, contentColor = cs.onPrimaryContainer, shape = RoundedCornerShape(32.dp), modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Box {
             ink.blavingad.hcb.ui.BgShape(androidx.compose.material3.MaterialShapes.Cookie12Sided, cs.onPrimaryContainer.copy(alpha = .08f),
                 Modifier.align(Alignment.CenterEnd).offset(x = 60.dp).size(200.dp))
+            if (balance != null && series.size > 1) ink.blavingad.hcb.ui.AreaChart(series, cs.onPrimaryContainer,
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(80.dp))
             Column(Modifier.padding(24.dp)) {
                 Text("Balance", style = MaterialTheme.typography.labelLarge)
                 Text(if (balance == null) "••••" else money(balance), style = MaterialTheme.typography.displayMediumEmphasized)

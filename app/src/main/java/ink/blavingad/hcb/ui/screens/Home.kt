@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ink.blavingad.hcb.container
 import ink.blavingad.hcb.ui.Avatar
 import ink.blavingad.hcb.ui.BentoGrid
+import ink.blavingad.hcb.data.balanceByDate
 import ink.blavingad.hcb.ui.CenterLoading
 import ink.blavingad.hcb.ui.EmptyState
 import ink.blavingad.hcb.ui.ErrorState
@@ -68,9 +69,12 @@ fun HomeScreen() {
         orgs.data.orEmpty().map { o -> async { runCatching { c.api.orgTransactions(o.id, null, null, null).data.map { it.copy(organization = it.organization ?: o) } }.getOrDefault(emptyList()) } }
             .flatMap { it.await() }.sortedByDescending { it.date ?: "" }
     } }
+    val history = rememberLoadable("homeHistory", orgs.data?.map { it.id }) { kotlinx.coroutines.coroutineScope {
+        orgs.data.orEmpty().map { o -> async { runCatching { c.api.balanceByDate(o.id) }.getOrDefault(emptyList()) } }.map { it.await() }
+    } }
     val refreshAll: () -> Unit = {
         scope.launch {
-            listOf(async { user.load() }, async { orgs.load() }, async { invites.load() }, async { cards.load() }, async { recent.load() },
+            listOf(async { user.load() }, async { orgs.load() }, async { invites.load() }, async { cards.load() }, async { recent.load() }, async { history.load() },
                 async { missing = runCatching { c.api.missingReceiptCount() }.getOrDefault(missing) }).forEach { it.await() }
         }
     }
@@ -111,6 +115,12 @@ fun HomeScreen() {
                             activeCards = cards.data?.count { it.status == "active" },
                             spentMonth = recent.data?.filter { (it.date ?: "").startsWith(month) && it.amount_cents < 0 && !it.declined }?.sumOf { -it.amount_cents },
                             last = recent.data?.firstOrNull(), hide = hide,
+                            balanceSeries = history.data?.let { ink.blavingad.hcb.ui.sumSeries(it) }.orEmpty(),
+                            dailySpend = recent.data?.let { r ->
+                                val today = java.time.LocalDate.now()
+                                (1..today.dayOfMonth).map { d -> val day = today.withDayOfMonth(d).toString()
+                                    r.filter { it.date?.startsWith(day) == true && it.amount_cents < 0 && !it.declined }.sumOf { -it.amount_cents }.toDouble() }
+                            }.orEmpty(),
                             onReceipts = { nav.navigate("receipts") }, onCards = { nav.navigate("cards") },
                             onLast = { recent.data?.firstOrNull()?.let { t -> nav.navigate("tx/${t.organization?.id}/${t.id}") } },
                         )

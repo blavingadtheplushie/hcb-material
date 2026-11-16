@@ -71,6 +71,7 @@ data class Transaction(
     val lost_receipt: Boolean = false, val tags: List<Tag>? = null, val organization: Organization? = null,
     val card_charge: CardCharge? = null, val donation: Donation? = null, val transfer: Transfer? = null,
     val check: Check? = null, val ach_transfer: AchTransfer? = null, val invoice: Invoice? = null,
+    val check_deposit: CheckDeposit? = null, val wire_transfer: OutWire? = null,
 )
 
 @Serializable

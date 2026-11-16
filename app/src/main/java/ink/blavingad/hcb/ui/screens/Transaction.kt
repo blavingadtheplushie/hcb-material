@@ -28,6 +28,8 @@ import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.automirrored.outlined.Label
+import ink.blavingad.hcb.data.memoSuggestions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -98,6 +100,8 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
     viewing?.let { ink.blavingad.hcb.ui.ReceiptViewer(it) { viewing = null } }
     var menu by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<String?>(null) }
+    var tagging by remember { mutableStateOf(false) }
+    val suggestions = rememberLoadable("memo", id, renaming != null) { if (renaming != null) c.api.memoSuggestions(org, id) else emptyList() }
     var comment by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 
@@ -121,6 +125,7 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
                     IconButton({ menu = true }) { Icon(Icons.Outlined.MoreVert, "More") }
                     DropdownMenu(menu, { menu = false }) {
                         DropdownMenuItem({ Text("Rename") }, { menu = false; renaming = t?.memo ?: "" }, leadingIcon = { Icon(Icons.Outlined.Edit, null) })
+                        DropdownMenuItem({ Text("Tags") }, { menu = false; tagging = true }, leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Label, null) })
                         DropdownMenuItem({ Text("Open on HCB") }, { menu = false; ctx.openUrl("https://hcb.hackclub.com/hcb/${id.removePrefix("txn_")}") }, leadingIcon = { Icon(Icons.Outlined.OpenInNew, null) })
                     }
                 },
@@ -199,11 +204,15 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
         }
     }
 
+    if (tagging && t != null) ink.blavingad.hcb.ui.TagSheet(org, t, { tagging = false }) { nt -> tagging = false; tx.data = nt.copy(organization = nt.organization ?: t.organization); scope.launch { tx.load() } }
     renaming?.let { value ->
         AlertDialog(
             onDismissRequest = { renaming = null },
             title = { Text("Rename transaction") },
-            text = { OutlinedTextField(value, { renaming = it }, singleLine = true, modifier = Modifier.fillMaxWidth()) },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(value, { renaming = it }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                ink.blavingad.hcb.ui.MemoSuggestions(suggestions.data.orEmpty().filter { it != value }) { renaming = it }
+            } },
             confirmButton = { Button({
                 val m = value.trim(); renaming = null
                 scope.launch { runCatching { c.api.renameTransaction(org, id, m) }.onSuccess { tx.data = it.copy(organization = it.organization ?: t?.organization); tx.load() }.onFailure { snack(it.message ?: "Rename failed") } }
@@ -225,7 +234,7 @@ private fun AmountHero(t: Transaction) {
             if (t.declined) Pill("Declined", cs.errorContainer, cs.onErrorContainer)
             if (t.reversed) Pill("Reversed", cs.surfaceContainerHighest, cs.onSurface)
             if (t.lost_receipt) Pill("No receipt", cs.surfaceContainerHighest, cs.onSurface)
-            t.tags.orEmpty().forEach { Pill((it.emoji?.let { e -> "$e " } ?: "") + it.label, cs.tertiaryContainer, cs.onTertiaryContainer) }
+            t.tags.orEmpty().forEach { val (bg, fg) = ink.blavingad.hcb.ui.tagColors(it.color); Pill((it.emoji?.let { e -> "$e " } ?: "") + it.label, bg, fg) }
         }
     }
 }
@@ -250,5 +259,7 @@ private fun details(t: Transaction): List<Pair<String, String>> = buildList {
     }
     t.check?.let { x -> x.recipient_name?.let { add("Recipient" to it) }; x.memo?.let { add("Check memo" to it) }; x.status?.let { add("Status" to it) } }
     t.ach_transfer?.let { x -> x.recipient_name?.let { add("Recipient" to it) }; x.bank_name?.let { add("Bank" to it) }; x.payment_for?.let { add("For" to it) } }
+    t.check_deposit?.let { x -> x.status?.let { add("Status" to it.replace('_', ' ')) }; x.estimated_arrival_date?.let { add("Arrives" to prettyDate(it)) }; x.rejection?.reason?.let { add("Rejected" to it) } }
+    t.wire_transfer?.let { x -> x.recipient_name?.let { add("Recipient" to it) }; x.recipient_country?.let { add("Country" to it) }; x.payment_for?.let { add("For" to it) }; x.state?.let { add("Status" to it) } }
     t.invoice?.let { x -> x.sponsor?.name?.let { add("Sponsor" to it) }; x.description?.let { add("Description" to it) }; x.due_date?.let { add("Due" to prettyDate(it)) } }
 }

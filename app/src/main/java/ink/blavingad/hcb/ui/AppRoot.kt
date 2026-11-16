@@ -140,6 +140,7 @@ fun AppRoot(onSignIn: (Boolean) -> Unit) {
                     CardFrame { TransactionScreen(it.arguments?.getString("org")!!, it.arguments?.getString("id")!!, it.arguments?.getString("mode")) }
                 }
                 composable("porg/{slug}") { CardFrame { ink.blavingad.hcb.ui.screens.PublicOrgScreen(it.arguments?.getString("slug")!!) } }
+                composable("money/{org}") { CardFrame { ink.blavingad.hcb.ui.screens.MoneyHistoryScreen(it.arguments?.getString("org")!!) } }
                 composable("card/{id}") { CardFrame { CardScreen(it.arguments?.getString("id")!!) } }
                 composable("invite/{id}") { CardFrame { InvitationScreen(it.arguments?.getString("id")!!) } }
             }
