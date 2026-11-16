@@ -65,7 +65,7 @@ fun TxRow(t: Transaction, index: Int, count: Int, showOrg: Boolean = false, onCl
                     MerchantIcon(t, t.icon(), if (t.amount_cents >= 0) cs.onTertiaryContainer else cs.onSecondaryContainer, 20.dp)
                 }
             },
-            headlineContent = { Text(t.title(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            headlineContent = { Text(t.listTitle(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
             supportingContent = {
                 val bits = buildList {
                     if (showOrg) t.organization?.name?.let(::add)

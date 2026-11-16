@@ -87,7 +87,7 @@ fun BentoGrid(
                 }) else null)
             Tile(Modifier.weight(1f), 120.dp, cs.surfaceContainerHighest, cs.onSurface, MaterialShapes.SoftBurst,
                 Icons.Outlined.CreditCard, "Latest", if (last == null) "…" else if (hide) "••••" else money(last.amount_cents, signed = true),
-                last?.title(), onClick = if (last != null) onLast else null)
+                last?.listTitle(), onClick = if (last != null) onLast else null)
         }
     }
 }

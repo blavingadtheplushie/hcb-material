@@ -24,6 +24,7 @@ import ink.blavingad.hcb.R
 import ink.blavingad.hcb.container
 import ink.blavingad.hcb.ui.money
 import ink.blavingad.hcb.ui.title
+import ink.blavingad.hcb.ui.listTitle
 import java.util.concurrent.TimeUnit
 
 /** HCB has no push for third-party apps: poll every 15 min (Android minimum) and notify new transactions. */
@@ -73,7 +74,7 @@ class TxWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, pa
             val base = t.id.hashCode() and 0x0fffffff
             val n = NotificationCompat.Builder(ctx, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notif)
-                .setContentTitle("${money(t.amount_cents, signed = true)} · ${t.title()}")
+                .setContentTitle("${money(t.amount_cents, signed = true)} · ${t.listTitle()}")
                 .setContentText(t.organization?.name ?: "New transaction")
                 .setAutoCancel(true)
                 .setContentIntent(intent(ctx, t, if (t.missing_receipt) "camera" else "open", base))

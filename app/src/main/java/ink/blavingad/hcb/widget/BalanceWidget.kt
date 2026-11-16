@@ -57,6 +57,7 @@ import androidx.glance.layout.ContentScale
 import ink.blavingad.hcb.ui.money
 import ink.blavingad.hcb.ui.parseDate
 import ink.blavingad.hcb.ui.title
+import ink.blavingad.hcb.ui.listTitle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -170,7 +171,7 @@ class BalanceWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(GlanceModifier.defaultWeight()) {
-                Text(t.title(), style = TextStyle(color = c.onSecondaryContainer, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+                Text(t.listTitle(), style = TextStyle(color = c.onSecondaryContainer, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)
                 val sub = listOfNotNull(shortDay(t.date), t.organization?.name, if (t.pending) "pending" else null).joinToString(" · ")
                 if (sub.isNotEmpty()) Text(sub, style = TextStyle(color = c.onSecondaryContainer, fontSize = 11.sp), maxLines = 1)
             }

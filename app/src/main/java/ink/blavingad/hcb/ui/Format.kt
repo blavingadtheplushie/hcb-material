@@ -56,3 +56,13 @@ fun Transaction.title(): String = when {
     donation?.donor?.name != null -> "Donation from ${donation.donor.name}"
     else -> memo.ifBlank { kind() }
 }
+
+private val trailingRef = Regex("""(\s+[#*]?[A-Z0-9-]*\d[A-Z0-9-]{4,})+\s*$""")
+
+/** Title for lists (app + widget): drops trailing reference numbers like "Relay      4016384" → "Relay". Details keep the full title(). */
+fun Transaction.listTitle(): String {
+    val full = title()
+    if (has_custom_memo) return full
+    val stripped = full.replace(trailingRef, "").replace(Regex("""\s{2,}"""), " ").trim()
+    return stripped.ifBlank { full.replace(Regex("""\s{2,}"""), " ").trim() }
+}
