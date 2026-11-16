@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ButtonGroupDefaults
@@ -125,6 +126,27 @@ fun SettingsScreen() {
                     ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.Storefront, null) },
                         headlineContent = { Text("Merchant logos") }, supportingContent = { Text("Brand icons on card charges (Simple Icons)") },
                         trailingContent = { Switch(logos, { c.prefs.setLogos(it) }) })
+                }
+            }
+            item {
+                val conv by c.prefs.convertTo.collectAsStateWithLifecycle()
+                var convMenu by remember { mutableStateOf(false) }
+                Spacer(Modifier.height(8.dp))
+                SegmentedItem(0, 1, { convMenu = true }) {
+                    ListItem(colors = clear, leadingContent = { Icon(Icons.Outlined.CurrencyExchange, null) },
+                        headlineContent = { Text("Converted amount") },
+                        supportingContent = { Text(if (conv.isEmpty()) "Off" else "$conv · Visa rate (0 % fee) for card charges, ECB otherwise, on the payment date") },
+                        trailingContent = {
+                            androidx.compose.foundation.layout.Box {
+                                Icon(Icons.Outlined.ExpandMore, null)
+                                DropdownMenu(convMenu, { convMenu = false }) {
+                                    DropdownMenuItem({ Text("Off") }, { c.prefs.setConvertTo(""); convMenu = false })
+                                    ink.blavingad.hcb.data.Fx.currencies.forEach { cur ->
+                                        DropdownMenuItem({ Text("$cur · " + runCatching { java.util.Currency.getInstance(cur).displayName }.getOrDefault(cur)) }, { c.prefs.setConvertTo(cur); convMenu = false })
+                                    }
+                                }
+                            }
+                        })
                 }
             }
             item { SectionHeader("Security & notifications") }

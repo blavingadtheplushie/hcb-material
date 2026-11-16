@@ -1,6 +1,8 @@
 package ink.blavingad.hcb.ui.screens
 
 import android.net.Uri
+import ink.blavingad.hcb.ui.parseDate
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -228,6 +230,7 @@ private fun AmountHero(t: Transaction) {
     Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(money(t.amount_cents, signed = true), style = MaterialTheme.typography.displayLargeEmphasized,
             color = if (t.amount_cents > 0) cs.tertiary else cs.onSurface, textAlign = TextAlign.Center)
+        ConvertedAmount(t)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (t.pending) Pill("Pending", cs.secondaryContainer, cs.onSecondaryContainer)
@@ -262,4 +265,24 @@ private fun details(t: Transaction): List<Pair<String, String>> = buildList {
     t.check_deposit?.let { x -> x.status?.let { add("Status" to it.replace('_', ' ')) }; x.estimated_arrival_date?.let { add("Arrives" to prettyDate(it)) }; x.rejection?.reason?.let { add("Rejected" to it) } }
     t.wire_transfer?.let { x -> x.recipient_name?.let { add("Recipient" to it) }; x.recipient_country?.let { add("Country" to it) }; x.payment_for?.let { add("For" to it) }; x.state?.let { add("Status" to it) } }
     t.invoice?.let { x -> x.sponsor?.name?.let { add("Sponsor" to it) }; x.description?.let { add("Description" to it) }; x.due_date?.let { add("Due" to prettyDate(it)) } }
+}
+
+@Composable
+private fun ConvertedAmount(t: Transaction) {
+    val c = androidx.compose.ui.platform.LocalContext.current.container
+    val to by c.prefs.convertTo.collectAsStateWithLifecycle()
+    val hide by c.prefs.hideBalances.collectAsStateWithLifecycle()
+    if (to.isEmpty() || to == "USD" || t.amount_cents == 0L) return
+    val day = remember(t.id, t.date, t.card_charge?.spent_at) {
+        t.card_charge?.spent_at?.let { runCatching { java.time.OffsetDateTime.parse(it).toLocalDate() }.getOrNull() } ?: parseDate(t.date) ?: java.time.LocalDate.now()
+    }
+    val card = t.card_charge != null
+    var rate by remember(t.id, to) { mutableStateOf<ink.blavingad.hcb.data.Fx.Rate?>(null) }
+    LaunchedEffect(t.id, to, day) { rate = c.fx.rate(to, day, card) }
+    val r = rate ?: return
+    val fmt = remember(to) { java.text.NumberFormat.getCurrencyInstance().apply { currency = java.util.Currency.getInstance(to) } }
+    val v = t.amount_cents / 100.0 * r.rate
+    val txt = if (hide) "≈ ••••" else "≈ " + (if (v < 0) "−" else "") + fmt.format(kotlin.math.abs(v))
+    Text("$txt · ${r.source} ${prettyDate(r.date.toString())}", style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
 }

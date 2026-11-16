@@ -36,6 +36,7 @@ class Container(context: Context) {
     val deepLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     val prefs = Prefs(context)
+    val fx = ink.blavingad.hcb.data.Fx(context, http, json)
     @Volatile var skipRelock = false
     val unlocked = kotlinx.coroutines.flow.MutableStateFlow(false)
     val receiptShortcut = kotlinx.coroutines.flow.MutableStateFlow<ink.blavingad.hcb.ui.ReceiptShortcut?>(null)

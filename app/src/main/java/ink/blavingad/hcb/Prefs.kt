@@ -20,6 +20,8 @@ class Prefs(context: Context) {
     val relockAfter = MutableStateFlow(p.getInt("relock", 30))
     /** background check interval in minutes (Android minimum is 15) */
     val notifyEvery = MutableStateFlow(p.getInt("notifyEvery", 15))
+    /** currency to show converted amounts in ("" = off) */
+    val convertTo = MutableStateFlow(p.getString("convertTo", "EUR") ?: "EUR")
     var lastSeenTx: String?
         get() = p.getString("lastTx", null)
         set(v) { p.edit { putString("lastTx", v) } }
@@ -32,5 +34,6 @@ class Prefs(context: Context) {
     fun setLogos(v: Boolean) { logos.value = v; p.edit { putBoolean("logos", v) } }
     fun setNotifyIncome(v: Boolean) { notifyIncome.value = v; p.edit { putBoolean("notifyIncome", v) } }
     fun setRelockAfter(v: Int) { relockAfter.value = v; p.edit { putInt("relock", v) } }
+    fun setConvertTo(v: String) { convertTo.value = v; p.edit { putString("convertTo", v) } }
     fun setNotifyEvery(v: Int) { notifyEvery.value = v; p.edit { putInt("notifyEvery", v) } }
 }
