@@ -1,6 +1,5 @@
 package ink.blavingad.hcb.ui
 
-import androidx.compose.foundation.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -59,7 +58,6 @@ fun tagColors(color: String?): Pair<Color, Color> {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TagSheet(org: String, tx: Transaction, onDismiss: () -> Unit, onSaved: (Transaction) -> Unit) {
     val c = LocalContext.current.container
@@ -126,7 +124,6 @@ fun TagSheet(org: String, tx: Transaction, onDismiss: () -> Unit, onSaved: (Tran
 }
 
 /** Chips under the rename field. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MemoSuggestions(list: List<String>, onPick: (String) -> Unit) {
     if (list.isEmpty()) return
