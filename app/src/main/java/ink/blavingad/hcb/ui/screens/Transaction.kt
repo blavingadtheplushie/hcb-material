@@ -86,6 +86,7 @@ import ink.blavingad.hcb.ui.rememberReceiptUploader
 import ink.blavingad.hcb.ui.prettyDateTime
 import ink.blavingad.hcb.ui.rememberLoadable
 import ink.blavingad.hcb.ui.title
+import ink.blavingad.hcb.ui.listTitle
 import kotlinx.coroutines.launch
 
 @Composable
@@ -99,7 +100,14 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
     val receipts = rememberLoadable("r", id) { c.api.receipts(id) }
     val comments = rememberLoadable("c", id) { c.api.comments(id) }
     var viewing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<ink.blavingad.hcb.data.Receipt?>(null) }
-    viewing?.let { ink.blavingad.hcb.ui.ReceiptViewer(it) { viewing = null } }
+    viewing?.let { rv ->
+        val t = tx.data
+        val n = receipts.data.orEmpty().let { l -> if (l.size > 1) "Receipt ${l.indexOfFirst { it.id == rv.id } + 1}/${l.size}" else "Receipt" }
+        ink.blavingad.hcb.ui.ReceiptViewer(rv,
+            title = t?.listTitle() ?: "Receipt",
+            subtitle = t?.let { listOfNotNull(n, ink.blavingad.hcb.ui.prettyDate(it.date).ifBlank { null }, ink.blavingad.hcb.ui.money(it.amount_cents, signed = true)).joinToString(" · ") },
+        ) { viewing = null }
+    }
     var menu by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<String?>(null) }
     var tagging by remember { mutableStateOf(false) }

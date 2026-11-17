@@ -11,6 +11,18 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.input.pointer.positionChanged
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,32 +98,65 @@ private suspend fun download(ctx: Context, r: Receipt): File = withContext(Dispa
     f
 }
 
-private suspend fun renderPdf(f: File, width: Int): List<Bitmap> = withContext(Dispatchers.IO) {
+/** Renders PDF pages one by one so the first page shows up right away. */
+private fun renderPdf(f: File, width: Int) = flow {
     ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
         PdfRenderer(fd).use { pdf ->
-            (0 until minOf(pdf.pageCount, 30)).map { i ->
-                pdf.openPage(i).use { p ->
-                    val w = width.coerceIn(400, 2000)
+            for (i in 0 until minOf(pdf.pageCount, 30)) {
+                val b = pdf.openPage(i).use { p ->
+                    val w = width.coerceIn(400, 1600)
                     val h = (w.toFloat() * p.height / p.width).toInt().coerceAtLeast(1)
                     Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also {
                         it.eraseColor(android.graphics.Color.WHITE)
                         p.render(it, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                     }
                 }
+                emit(b)
             }
         }
     }
-}
+}.flowOn(Dispatchers.IO)
 
-/** Pinch-to-zoom + pan + double-tap container. */
+/**
+ * Pinch-to-zoom + pan + double-tap container.
+ * Zooms around the fingers' centroid, pans 1:1 with the finger, clamps to the content bounds and animates double taps.
+ */
 @Composable
 private fun Zoomable(content: @Composable () -> Unit) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    val scope = rememberCoroutineScope()
+    var anim by remember { mutableStateOf<Job?>(null) }
+
+    fun clamp(o: Offset, s: Float): Offset {
+        val mx = (size.width * (s - 1f) / 2f).coerceAtLeast(0f)
+        val my = (size.height * (s - 1f) / 2f).coerceAtLeast(0f)
+        return Offset(o.x.coerceIn(-mx, mx), o.y.coerceIn(-my, my))
+    }
+    fun animateTo(targetScale: Float, targetOffset: Offset) {
+        anim?.cancel()
+        val s0 = scale; val o0 = offset
+        anim = scope.launch {
+            animate(0f, 1f, animationSpec = spring(dampingRatio = 0.9f, stiffness = 400f)) { t, _ ->
+                scale = s0 + (targetScale - s0) * t
+                offset = o0 + (targetOffset - o0) * t
+            }
+        }
+    }
+
     Box(
-        Modifier.fillMaxSize()
+        Modifier.fillMaxSize().clipToBounds()
+            .onSizeChanged { size = it }
             .pointerInput(Unit) {
-                detectTapGestures(onDoubleTap = { if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = 2.5f })
+                detectTapGestures(onDoubleTap = { tap ->
+                    if (scale > 1.05f) animateTo(1f, Offset.Zero)
+                    else {
+                        val target = 2.5f
+                        val g = tap - Offset(size.width / 2f, size.height / 2f)
+                        animateTo(target, clamp(g - (g - offset) * (target / scale), target))
+                    }
+                })
             }
             .pointerInput(Unit) {
                 // only grab the gesture when pinching or already zoomed, so lists still scroll normally
@@ -119,12 +164,22 @@ private fun Zoomable(content: @Composable () -> Unit) {
                     awaitFirstDown(requireUnconsumed = false)
                     do {
                         val ev = awaitPointerEvent()
-                        if (ev.changes.size > 1 || scale > 1f) {
-                            scale = (scale * ev.calculateZoom()).coerceIn(1f, 6f)
-                            offset = if (scale == 1f) Offset.Zero else offset + ev.calculatePan() * scale
-                            ev.changes.forEach { it.consume() }
+                        if (ev.changes.size > 1 || scale > 1.01f) {
+                            anim?.cancel()
+                            val zoom = ev.calculateZoom()
+                            val pan = ev.calculatePan()
+                            val g = ev.calculateCentroid(useCurrent = true).let {
+                                if (it == Offset.Unspecified) Offset.Zero else it - Offset(size.width / 2f, size.height / 2f)
+                            }
+                            val newScale = (scale * zoom).coerceIn(1f, 5f)
+                            val z = newScale / scale
+                            // keep the point under the fingers fixed, then follow the finger 1:1
+                            offset = clamp(g - (g - offset) * z + pan, newScale)
+                            scale = newScale
+                            ev.changes.forEach { if (it.positionChanged()) it.consume() }
                         }
                     } while (ev.changes.any { it.pressed })
+                    if (scale < 1.02f && scale != 1f) animateTo(1f, Offset.Zero)
                 }
             }
             .graphicsLayer { scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y },
@@ -134,17 +189,20 @@ private fun Zoomable(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ReceiptViewer(r: Receipt, onClose: () -> Unit) {
+fun ReceiptViewer(r: Receipt, title: String? = null, subtitle: String? = null, onClose: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val pdf = remember(r.id) { r.isPdf() }
     var pages by remember(r.id) { mutableStateOf<List<Bitmap>?>(null) }
     var error by remember(r.id) { mutableStateOf<String?>(null) }
-    val widthPx = ctx.resources.displayMetrics.widthPixels * 2
+    val widthPx = (ctx.resources.displayMetrics.widthPixels * 1.5f).toInt()
+    var fullLoaded by remember(r.id) { mutableStateOf(false) }
 
     if (pdf) LaunchedEffect(r.id) {
-        runCatching { renderPdf(download(ctx, r), widthPx) }
-            .onSuccess { pages = it }.onFailure { error = it.message ?: "Couldn't open this PDF" }
+        runCatching {
+            val f = download(ctx, r)
+            renderPdf(f, widthPx).collect { b -> pages = pages.orEmpty() + b }
+        }.onFailure { if (pages.isNullOrEmpty()) error = it.message ?: "Couldn't open this PDF" }
     }
 
     fun share() = scope.launch {
@@ -165,7 +223,16 @@ fun ReceiptViewer(r: Receipt, onClose: () -> Unit) {
             containerColor = MaterialTheme.colorScheme.surface,
             topBar = {
                 TopAppBar(
-                    title = { Text(r.filename ?: "Receipt", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    title = {
+                        Column {
+                            Text(title ?: "Receipt", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            val sub = subtitle ?: listOfNotNull(
+                                prettyDateTime(r.created_at).ifBlank { null }?.let { "Uploaded $it" },
+                                r.uploader?.name?.ifBlank { null }?.let { "by $it" },
+                            ).joinToString(" ").ifBlank { null }
+                            if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    },
                     navigationIcon = { IconButton(onClose) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Close") } },
                     actions = {
                         IconButton({ share() }) { Icon(Icons.Outlined.Share, "Share") }
@@ -181,9 +248,18 @@ fun ReceiptViewer(r: Receipt, onClose: () -> Unit) {
                         Text(error!!, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         TextButton({ r.url?.let(ctx::openUrlInBrowser) }) { Text("Open in browser") }
                     }
-                    !pdf -> Zoomable {
-                        AsyncImage(r.url ?: r.preview_url, r.filename, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
-                            onError = { error = "Couldn't load this receipt" })
+                    !pdf -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Zoomable {
+                            // small preview (already cached from the thumbnail) shows instantly, full-res fades in on top
+                            if (!fullLoaded && r.preview_url != null) AsyncImage(r.preview_url, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+                            AsyncImage(
+                                ImageRequest.Builder(ctx).data(r.url ?: r.preview_url).crossfade(200).build(), r.filename,
+                                contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
+                                onSuccess = { fullLoaded = true },
+                                onError = { if (r.preview_url == null) error = "Couldn't load this receipt" else fullLoaded = false },
+                            )
+                        }
+                        if (!fullLoaded && r.preview_url == null) LoadingIndicator()
                     }
                     pages == null -> LoadingIndicator()
                     else -> Zoomable {
