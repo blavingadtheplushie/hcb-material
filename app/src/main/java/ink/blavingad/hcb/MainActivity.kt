@@ -69,7 +69,7 @@ class MainActivity : FragmentActivity() {
         val f = android.view.WindowManager.LayoutParams.FLAG_SECURE
         if (container.prefs.secure.value && foreground) window.addFlags(f) else window.clearFlags(f)
     }
-    override fun onResume() { super.onResume(); foreground = true; covered.value = false; applySecure() }
+    override fun onResume() { super.onResume(); foreground = true; covered.value = false; applySecure(); resetStaleSignIn() }
     override fun onPause() {
         foreground = false
         if (container.prefs.secure.value) covered.value = true
@@ -106,15 +106,43 @@ class MainActivity : FragmentActivity() {
         container.scope.launch { container.auth.handleCallback(uri) }
     }
 
+    private val ui = android.os.Handler(android.os.Looper.getMainLooper())
+    private var signInStartedAt = 0L
+
     private fun startSignIn(signup: Boolean) {
         val dark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val uri = container.auth.buildAuthorizeUri(dark, signup)
         container.auth.busy.value = true
-        try {
-            AuthTabIntent.Builder().build().launch(authLauncher, uri, "hcb")
-        } catch (_: ActivityNotFoundException) {
-            try { CustomTabsIntent.Builder().build().launchUrl(this, uri) }
-            catch (_: ActivityNotFoundException) { container.auth.cancelled("No web browser found to sign in.") }
+        container.skipRelock = true
+        signInStartedAt = System.currentTimeMillis()
+        val launched = runCatching { AuthTabIntent.Builder().build().launch(authLauncher, uri, "hcb") }.isSuccess
+        if (!launched) { openInBrowser(uri); return }
+        // some browsers accept the Auth Tab intent but never show anything: if we're still
+        // in the foreground shortly after, fall back to a Custom Tab / plain browser.
+        val started = signInStartedAt
+        ui.postDelayed({
+            if (foreground && signInStartedAt == started && container.auth.busy.value) openInBrowser(uri)
+        }, 2500)
+    }
+
+    private fun openInBrowser(uri: Uri) {
+        signInStartedAt = System.currentTimeMillis()
+        container.skipRelock = true
+        try { CustomTabsIntent.Builder().build().launchUrl(this, uri) }
+        catch (_: Exception) {
+            try { startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)) }
+            catch (_: Exception) { container.auth.cancelled("No web browser found to sign in.") }
         }
+        // never leave the button spinning if the browser didn't open either
+        val started = signInStartedAt
+        ui.postDelayed({ if (foreground && signInStartedAt == started && container.auth.busy.value && !container.auth.exchanging) container.auth.cancelled() }, 2500)
+    }
+
+    /** Back from the browser without a redirect (closed the tab, Custom Tab has no result): stop the spinner. */
+    private fun resetStaleSignIn() {
+        if (!container.auth.busy.value || signInStartedAt == 0L) return
+        ui.postDelayed({
+            if (foreground && container.auth.busy.value && !container.auth.exchanging && System.currentTimeMillis() - signInStartedAt > 2000) container.auth.cancelled()
+        }, 700)
     }
 }

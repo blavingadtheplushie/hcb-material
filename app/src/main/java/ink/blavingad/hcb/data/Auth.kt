@@ -27,6 +27,8 @@ class Auth(context: Context, private val http: OkHttpClient, private val json: J
     val tokens: StateFlow<Tokens?> = _tokens
     val error = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow(false)
+    /** true only while the code → token exchange is running */
+    @Volatile var exchanging = false
 
     private fun save(t: Tokens?) {
         prefs.edit { if (t == null) remove("tokens") else putString("tokens", json.encodeToString(Tokens.serializer(), t)) }
@@ -70,7 +72,7 @@ class Auth(context: Context, private val http: OkHttpClient, private val json: J
         val expected = prefs.getString("state", null)
         if (expected != null && state != null && state != expected) { error.value = "Sign-in state mismatch. Try again."; return }
         val verifier = prefs.getString("verifier", null) ?: run { error.value = "Sign-in expired. Try again."; return }
-        busy.value = true
+        busy.value = true; exchanging = true
         try {
             val t = tokenRequest(FormBody.Builder()
                 .add("grant_type", "authorization_code").add("code", code)
@@ -81,7 +83,7 @@ class Auth(context: Context, private val http: OkHttpClient, private val json: J
             save(t)
         } catch (e: Exception) {
             error.value = e.message ?: "Sign-in failed"
-        } finally { busy.value = false }
+        } finally { exchanging = false; busy.value = false }
     }
 
     fun cancelled(msg: String? = null) { busy.value = false; if (msg != null) error.value = msg }
