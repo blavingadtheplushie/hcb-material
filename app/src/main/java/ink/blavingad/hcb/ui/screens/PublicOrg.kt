@@ -75,7 +75,7 @@ fun PublicOrgScreen(slug: String) {
             )
         },
     ) { pad ->
-        if (o == null) { if (org.error != null) ErrorState(org.error!!, { scope.launch { org.load() } }, Modifier.padding(pad)) else CenterLoading(Modifier.padding(pad)); return@Scaffold }
+        if (o == null) { if (org.error != null) ErrorState(org.error!!, { scope.launch { org.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.orgSkeleton() }; return@Scaffold }
         RefreshBox(txs.loading && txs.items != null || org.loading, { scope.launch { org.load(); if (tab == 1) cards.load() else txs.refresh() } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
                 item { BalanceHero(o.balances?.balance_cents, o.balances?.fee_balance_cents) }
@@ -104,7 +104,7 @@ fun PublicOrgScreen(slug: String) {
                         val cl = cards.data
                         if (cl == null) item {
                             if (cards.error != null) ErrorState(cards.error!!, { scope.launch { cards.load() } })
-                            else androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = androidx.compose.ui.Alignment.Center) { androidx.compose.material3.LoadingIndicator() }
+                            else androidx.compose.foundation.layout.Column { repeat(2) { ink.blavingad.hcb.ui.SkeletonRow(it, 2) } }
                         }
                         else if (cl.isEmpty()) item { ink.blavingad.hcb.ui.EmptyState(androidx.compose.material.icons.Icons.Outlined.CreditCard, "No cards in this org") }
                         else items(cl.size, key = { cl[it].id }) { i ->

@@ -102,7 +102,7 @@ fun HomeScreen() {
     ) { pad ->
         when {
             orgs.data == null && orgs.error != null -> ErrorState(orgs.error!!, refreshAll, Modifier.padding(pad))
-            orgs.data == null -> CenterLoading(Modifier.padding(pad))
+            orgs.data == null -> ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.homeSkeleton() }
             else -> RefreshBox(orgs.loading || user.loading, refreshAll, Modifier.fillMaxSize().padding(pad)) {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = ListBottom) {
                     item(key = "cardlock") { ink.blavingad.hcb.ui.CardLockBanner(user.data?.card_locking) }
@@ -148,7 +148,8 @@ fun HomeScreen() {
                                 supportingContent = { if (o.playground_mode == true) Text("Playground") else if (o.financially_frozen == true) Text("Frozen") else Text(o.slug) },
                                 trailingContent = {
                                     val b = balances[o.id]
-                                    Text(if (hide) "••••" else if (balances.containsKey(o.id)) money(b) else "…", style = MaterialTheme.typography.titleMediumEmphasized)
+                                    if (!hide && !balances.containsKey(o.id)) ink.blavingad.hcb.ui.SkeletonText(64.dp_(), index = i)
+                                    else Text(if (hide) "••••" else money(b), style = MaterialTheme.typography.titleMediumEmphasized)
                                 })
                         }
                     }

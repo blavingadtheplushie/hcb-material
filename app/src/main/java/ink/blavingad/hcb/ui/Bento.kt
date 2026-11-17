@@ -49,7 +49,8 @@ private fun Tile(
                     Text("  $label", color = fg.copy(alpha = .85f), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 Box(Modifier.weight(1f))
-                Text(value, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                if (value == "…") SkeletonBlock(if (big) 170.dp else 90.dp, if (big) 36.dp else 26.dp, Modifier.padding(vertical = 4.dp), color = fg.copy(alpha = .18f))
+                else Text(value, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = if (big) MaterialTheme.typography.displaySmallEmphasized else MaterialTheme.typography.headlineSmallEmphasized)
                 sub?.let { Text(it, color = fg.copy(alpha = .75f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }

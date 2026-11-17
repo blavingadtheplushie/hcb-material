@@ -144,7 +144,7 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
             )
         },
     ) { pad ->
-        if (t == null) { if (tx.error != null) ErrorState(tx.error!!, { scope.launch { tx.load() } }, Modifier.padding(pad)) else CenterLoading(Modifier.padding(pad)); return@Scaffold }
+        if (t == null) { if (tx.error != null) ErrorState(tx.error!!, { scope.launch { tx.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.txSkeleton() }; return@Scaffold }
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = ListBottom) {
             item { AmountHero(t) }
             val rows = details(t)
@@ -166,7 +166,7 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
                         Text("This transaction needs a receipt", Modifier.padding(start = 12.dp).weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
-                if (list == null) Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center) { LoadingIndicator() }
+                if (list == null) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { repeat(2) { ink.blavingad.hcb.ui.SkeletonBlock(96.dp, 120.dp, shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp), index = it) } }
                 else if (list.isNotEmpty()) LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(list, key = { it.id }) { r ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {

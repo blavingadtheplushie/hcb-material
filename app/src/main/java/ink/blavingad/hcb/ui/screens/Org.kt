@@ -67,6 +67,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ink.blavingad.hcb.container
 import ink.blavingad.hcb.data.Transaction
 import ink.blavingad.hcb.data.balanceByDate
+import ink.blavingad.hcb.ui.skeletonRows
+import ink.blavingad.hcb.ui.SkeletonRow
+import ink.blavingad.hcb.ui.cardsSkeleton
 import ink.blavingad.hcb.ui.MoneyActions
 import ink.blavingad.hcb.ui.series
 import ink.blavingad.hcb.ui.Avatar
@@ -161,7 +164,7 @@ fun OrgScreen(id: String) {
             )
         },
     ) { pad ->
-        if (o == null) { if (org.error != null) ErrorState(org.error!!, { scope.launch { org.load() } }, Modifier.padding(pad)) else CenterLoading(Modifier.padding(pad)); return@Scaffold }
+        if (o == null) { if (org.error != null) ErrorState(org.error!!, { scope.launch { org.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.orgSkeleton() }; return@Scaffold }
         RefreshBox(txs.loading && txs.items != null || org.loading, { scope.launch { org.load(); if (tab == 0) txs.refresh() else if (tab == 1) cards.load() } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
                 item {
@@ -195,7 +198,7 @@ fun OrgScreen(id: String) {
                     }
                     1 -> {
                         val cl = cards.data
-                        if (cl == null) item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { LoadingIndicator() } }
+                        if (cl == null) cardsSkeleton(2)
                         else if (cl.isEmpty()) item { EmptyState(Icons.Outlined.CreditCard, "No cards in this org") }
                         else itemsIndexed(cl, key = { _, k -> k.id }) { _, k ->
                             Surface(onClick = { nav.navigate("card/${k.id}") }, shape = RoundedCornerShape(24.dp), modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
@@ -266,7 +269,7 @@ fun androidx.compose.foundation.lazy.LazyListScope.txList(txs: Paged<Transaction
     val items = txs.items
     if (items == null) {
         if (txs.error != null) item { Text(txs.error!!, color = Color.Unspecified, modifier = Modifier.padding(32.dp)) }
-        else item { Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { LoadingIndicator() } }
+        else skeletonRows(6, key = "sktx")
         return
     }
     if (items.isEmpty()) { item { EmptyState(Icons.Outlined.SearchOff, "Nothing here", "No transactions match.") }; return }
@@ -275,7 +278,7 @@ fun androidx.compose.foundation.lazy.LazyListScope.txList(txs: Paged<Transaction
         item(key = "h$day") { SectionHeader(dayHeader(day), Modifier.animateItem()) }
         itemsIndexed(list, key = { _, t -> t.id }) { i, t -> Box(Modifier.animateItem()) { TxRow(t, i, list.size, showOrg) { onOpen(t) } } }
     }
-    if (txs.hasMore) item(key = "more") { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { LoadingIndicator(Modifier.size(40.dp)) } }
+    if (txs.hasMore) item(key = "more") { Box(Modifier.padding(top = 8.dp)) { SkeletonRow(0, 1) } }
 }
 
 @Composable
