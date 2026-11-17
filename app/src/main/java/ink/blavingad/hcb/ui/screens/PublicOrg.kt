@@ -1,5 +1,6 @@
 package ink.blavingad.hcb.ui.screens
 
+import ink.blavingad.hcb.ui.orgSkeleton
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -75,7 +76,7 @@ fun PublicOrgScreen(slug: String) {
             )
         },
     ) { pad ->
-        if (o == null) { if (org.error != null) ErrorState(org.error!!, { scope.launch { org.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.orgSkeleton() }; return@Scaffold }
+        if (o == null) { if (org.error != null) ErrorState(org.error!!, { scope.launch { org.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { orgSkeleton() }; return@Scaffold }
         RefreshBox(txs.loading && txs.items != null || org.loading, { scope.launch { org.load(); if (tab == 1) cards.load() else txs.refresh() } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
                 item { BalanceHero(o.balances?.balance_cents, o.balances?.fee_balance_cents) }

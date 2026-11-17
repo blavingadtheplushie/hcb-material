@@ -1,5 +1,6 @@
 package ink.blavingad.hcb.ui.screens
 
+import ink.blavingad.hcb.ui.homeSkeleton
 import ink.blavingad.hcb.ui.navigateTab
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -102,7 +103,7 @@ fun HomeScreen() {
     ) { pad ->
         when {
             orgs.data == null && orgs.error != null -> ErrorState(orgs.error!!, refreshAll, Modifier.padding(pad))
-            orgs.data == null -> ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.homeSkeleton() }
+            orgs.data == null -> ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { homeSkeleton() }
             else -> RefreshBox(orgs.loading || user.loading, refreshAll, Modifier.fillMaxSize().padding(pad)) {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = ListBottom) {
                     item(key = "cardlock") { ink.blavingad.hcb.ui.CardLockBanner(user.data?.card_locking) }

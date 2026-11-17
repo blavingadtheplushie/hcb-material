@@ -1,5 +1,6 @@
 package ink.blavingad.hcb.ui.screens
 
+import ink.blavingad.hcb.ui.txSkeleton
 import android.net.Uri
 import ink.blavingad.hcb.ui.parseDate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -144,7 +145,7 @@ fun TransactionScreen(org: String, id: String, mode: String? = null) {
             )
         },
     ) { pad ->
-        if (t == null) { if (tx.error != null) ErrorState(tx.error!!, { scope.launch { tx.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.txSkeleton() }; return@Scaffold }
+        if (t == null) { if (tx.error != null) ErrorState(tx.error!!, { scope.launch { tx.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { txSkeleton() }; return@Scaffold }
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = ListBottom) {
             item { AmountHero(t) }
             val rows = details(t)

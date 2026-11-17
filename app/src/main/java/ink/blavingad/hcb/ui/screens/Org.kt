@@ -1,5 +1,6 @@
 package ink.blavingad.hcb.ui.screens
 
+import ink.blavingad.hcb.ui.orgSkeleton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -164,7 +165,7 @@ fun OrgScreen(id: String) {
             )
         },
     ) { pad ->
-        if (o == null) { if (org.error != null) ErrorState(org.error!!, { scope.launch { org.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.orgSkeleton() }; return@Scaffold }
+        if (o == null) { if (org.error != null) ErrorState(org.error!!, { scope.launch { org.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { orgSkeleton() }; return@Scaffold }
         RefreshBox(txs.loading && txs.items != null || org.loading, { scope.launch { org.load(); if (tab == 0) txs.refresh() else if (tab == 1) cards.load() } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
                 item {

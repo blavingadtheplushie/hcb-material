@@ -1,5 +1,6 @@
 package ink.blavingad.hcb.ui.screens
 
+import ink.blavingad.hcb.ui.skeletonRows
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -83,7 +84,7 @@ fun MoneyHistoryScreen(org: String) {
     ) { pad ->
         RefreshBox(loading, { scope.launch { listOf(checks, deposits, wires, invoices).map { async { it.load() } }.forEach { it.await() } } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = ListBottom) {
-                if (sections.all { it.second == null } && loading) ink.blavingad.hcb.ui.skeletonRows(5)
+                if (sections.all { it.second == null } && loading) skeletonRows(5)
                 else if (sections.all { it.second.isNullOrEmpty() }) item { EmptyState(Icons.Outlined.History, "Nothing yet", "Invoices, checks and wires you send show up here.") }
                 sections.forEach { (title, rows) ->
                     if (!rows.isNullOrEmpty()) {

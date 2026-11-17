@@ -1,5 +1,7 @@
 package ink.blavingad.hcb.ui.screens
 
+import ink.blavingad.hcb.ui.cardsSkeleton
+import ink.blavingad.hcb.ui.skeletonRows
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,7 +81,7 @@ fun CardsScreen() {
         val l = cards.data
         when {
             l == null && cards.error != null -> ErrorState(cards.error!!, { scope.launch { cards.load() } }, Modifier.padding(pad))
-            l == null -> ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.cardsSkeleton() }
+            l == null -> ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { cardsSkeleton() }
             else -> RefreshBox(cards.loading, { scope.launch { cards.load() } }, Modifier.fillMaxSize().padding(pad)) {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = ListBottom) {
                     if (l.isEmpty()) item { EmptyState(Icons.Outlined.CreditCard, "No cards yet", "Cards you own on HCB show up here.") }
@@ -118,7 +120,7 @@ fun CardScreen(id: String) {
         },
     ) { pad ->
         val k = card.data
-        if (k == null) { if (card.error != null) ErrorState(card.error!!, { scope.launch { card.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { ink.blavingad.hcb.ui.cardsSkeleton(1); ink.blavingad.hcb.ui.skeletonRows(5) }; return@Scaffold }
+        if (k == null) { if (card.error != null) ErrorState(card.error!!, { scope.launch { card.load() } }, Modifier.padding(pad)) else ink.blavingad.hcb.ui.SkeletonScreen(Modifier.padding(pad)) { cardsSkeleton(1); skeletonRows(5) }; return@Scaffold }
         RefreshBox(card.loading || (txs.loading && txs.items != null), { scope.launch { card.load(); txs.refresh() } }, Modifier.fillMaxSize().padding(pad)) {
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = ListBottom) {
                 // only the cardholder sees their own locked state, not a manager viewing someone else's card
